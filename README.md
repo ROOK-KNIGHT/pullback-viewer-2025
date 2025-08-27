@@ -120,16 +120,15 @@ The interactive chart includes:
 pullback-viewer/
 ├── README.md                           # This documentation
 ├── pullback_viewer_interactive.py     # Main Python script
-├── charts/                            # Pre-generated interactive charts
+├── examples/                          # Interactive chart examples
 │   ├── AAPL_pullback_viewer_*.html   # Apple charts (multiple versions)
 │   ├── NVDA_pullback_viewer_*.html   # NVIDIA chart (structure-only)
-│   ├── TSLA_pullback_viewer_*.html   # Tesla chart
-│   ├── MSFT_pullback_viewer_*.html   # Microsoft chart (30min)
-│   ├── GOOGL_pullback_viewer_*.html  # Google chart (structure-only)
-│   ├── SPY_pullback_viewer_*.html    # S&P 500 ETF (1min data)
-│   ├── QQQ_pullback_viewer_*.html    # NASDAQ ETF (no-volume)
-│   └── AMD_pullback_viewer_*.html    # AMD chart (15min)
-├── examples/                          # Example configurations
+│   ├── MSFT_pullback_viewer_*.html   # Microsoft chart (15min frequency)
+│   ├── GOOGL_pullback_viewer_*.html  # Google chart (5min frequency)
+│   ├── SPY_pullback_viewer_*.html    # S&P 500 ETF charts (multiple versions)
+│   ├── QQQ_pullback_viewer_*.html    # NASDAQ ETF (structure-only)
+│   └── AMD_pullback_viewer_*.html    # AMD chart (15min, no-volume)
+├── charts/                            # Legacy chart directory
 ├── docs/                             # Additional documentation
 └── cs_tokens.json                    # API authentication tokens
 ```
@@ -141,7 +140,7 @@ Each run creates an HTML file with format:
 
 Example: `AAPL_pullback_viewer_20250826_210331.html`
 
-All generated charts are automatically saved to the `charts/` directory.
+All generated charts are automatically saved to the `examples/` directory.
 
 ## How to View Interactive Charts
 
@@ -156,14 +155,13 @@ If you want to view the pre-generated charts without running the Python script:
 5. **Double-click the downloaded HTML file** to open it in your browser
 
 **Available Charts:**
-- 📱 **AAPL**: Apple Inc. pullback analysis (multiple timeframes)
-- 🎮 **NVDA**: NVIDIA Corporation pullback analysis (structure-only mode)
-- 🚗 **TSLA**: Tesla Inc. pullback analysis
-- 💻 **MSFT**: Microsoft Corporation (30min frequency, 3 days)
-- 🔍 **GOOGL**: Google/Alphabet (structure-only, 15min frequency)
-- 📊 **SPY**: S&P 500 ETF (1min frequency, high-resolution data)
-- 🏛️ **QQQ**: NASDAQ ETF (no-volume chart style)
-- 🔥 **AMD**: Advanced Micro Devices (15min frequency)
+- 📱 **AAPL**: Apple Inc. pullback analysis (multiple timeframes available)
+- 🎮 **NVDA**: NVIDIA Corporation (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
+- 💻 **MSFT**: Microsoft Corporation (2 days, 15min - 25 pullbacks, 28% bullish, 72% bearish)
+- 🔍 **GOOGL**: Google/Alphabet (3 days, 5min - 76 pullbacks, 51.3% bullish, 48.7% bearish)
+- 📊 **SPY**: S&P 500 ETF (1 day, 5min - 38 pullbacks, 60.5% bullish, 39.5% bearish)
+- 🏛️ **QQQ**: NASDAQ ETF (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
+- 🔥 **AMD**: Advanced Micro Devices (1 day, 15min, no-volume - 12 pullbacks, 66.7% bullish, 33.3% bearish)
 
 ### 🖥️ Open Local HTML Charts
 

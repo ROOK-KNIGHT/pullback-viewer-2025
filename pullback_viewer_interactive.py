@@ -310,7 +310,7 @@ class PullbackViewer:
         
         return self.pullbacks
     
-    def create_interactive_chart(self, symbol, show_volume=True, structure_only=False):
+    def create_interactive_chart(self, symbol, show_volume=True, structure_only=False, output_dir="examples"):
         """
         Create an interactive plotly chart with pullback points
         
@@ -318,6 +318,7 @@ class PullbackViewer:
             symbol (str): Stock symbol for chart title
             show_volume (bool): Whether to show volume subplot
             structure_only (bool): Whether to show only structural pullbacks
+            output_dir (str): Directory to save the chart file
         """
         if self.df is None:
             print("No data available for charting")
@@ -537,10 +538,15 @@ Examples:
         print("Opening interactive chart in browser...")
         fig.show()
         
-        # Save as HTML file
+        # Create examples directory if it doesn't exist
+        output_dir = "examples"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Save as HTML file in examples directory
         filename = f"{args.symbol.upper()}_pullback_viewer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        fig.write_html(filename)
-        print(f"Chart saved as: {filename}")
+        filepath = os.path.join(output_dir, filename)
+        fig.write_html(filepath)
+        print(f"Chart saved as: {filepath}")
     else:
         print("Failed to create chart")
 
