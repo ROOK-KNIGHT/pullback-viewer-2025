@@ -267,25 +267,25 @@ class PullbackViewer:
             current = df.iloc[i]
             previous = df.iloc[i-1]
             
-            # Check for bearish pullback
-            # Current candle body closes above previous candle high
+            # Check for bullish pullback (in a bullish trend)
+            # Current candle body closes above previous candle high - indicates bullish momentum
             if current['close'] > previous['high'] and current['open'] < current['close']:
                 pullbacks.append({
                     'index': i,
                     'datetime': current['datetime'],
-                    'type': 'bearish',
+                    'type': 'bullish',
                     'price': current['close'],
                     'previous_high': previous['high'],
                     'valid': True
                 })
             
-            # Check for bullish pullback  
-            # Current candle body closes below previous candle low
+            # Check for bearish pullback (in a bearish trend)
+            # Current candle body closes below previous candle low - indicates bearish momentum
             elif current['close'] < previous['low'] and current['open'] > current['close']:
                 pullbacks.append({
                     'index': i,
                     'datetime': current['datetime'],
-                    'type': 'bullish',
+                    'type': 'bearish',
                     'price': current['close'],
                     'previous_low': previous['low'],
                     'valid': True
@@ -356,12 +356,19 @@ class PullbackViewer:
         
         # Add pullback points if available
         if self.pullbacks is not None and len(self.pullbacks) > 0:
-            # Bearish pullbacks (red dots)
+            # Bearish pullbacks (red dots) - positioned at bottom of candles
             bearish = self.pullbacks[self.pullbacks['type'] == 'bearish']
             if len(bearish) > 0:
+                # Get the corresponding candle data for positioning
+                bearish_y_positions = []
+                for idx in bearish['index']:
+                    candle = self.df.iloc[idx]
+                    # Position red dots at the low of the candle
+                    bearish_y_positions.append(candle['low'] - (candle['high'] - candle['low']) * 0.1)
+                
                 fig.add_trace(go.Scatter(
                     x=bearish['datetime'],
-                    y=bearish['price'],
+                    y=bearish_y_positions,
                     mode='markers',
                     marker=dict(
                         symbol='circle',
@@ -370,17 +377,24 @@ class PullbackViewer:
                         line=dict(width=2, color='darkred')
                     ),
                     name='Bearish Pullback',
-                    text=[f"Bearish Pullback<br>Price: ${price:.2f}<br>Prev High: ${prev_high:.2f}" 
-                          for price, prev_high in zip(bearish['price'], bearish['previous_high'])],
+                    text=[f"Bearish Pullback<br>Close: ${price:.2f}<br>Prev Low: ${prev_low:.2f}" 
+                          for price, prev_low in zip(bearish['price'], bearish['previous_low'])],
                     hovertemplate='%{text}<extra></extra>'
                 ), row=1 if show_volume else None, col=1 if show_volume else None)
             
-            # Bullish pullbacks (green dots)
+            # Bullish pullbacks (green dots) - positioned at top of candles
             bullish = self.pullbacks[self.pullbacks['type'] == 'bullish']
             if len(bullish) > 0:
+                # Get the corresponding candle data for positioning
+                bullish_y_positions = []
+                for idx in bullish['index']:
+                    candle = self.df.iloc[idx]
+                    # Position green dots at the high of the candle
+                    bullish_y_positions.append(candle['high'] + (candle['high'] - candle['low']) * 0.1)
+                
                 fig.add_trace(go.Scatter(
                     x=bullish['datetime'],
-                    y=bullish['price'],
+                    y=bullish_y_positions,
                     mode='markers',
                     marker=dict(
                         symbol='circle',
@@ -389,8 +403,8 @@ class PullbackViewer:
                         line=dict(width=2, color='darkgreen')
                     ),
                     name='Bullish Pullback',
-                    text=[f"Bullish Pullback<br>Price: ${price:.2f}<br>Prev Low: ${prev_low:.2f}" 
-                          for price, prev_low in zip(bullish['price'], bullish['previous_low'])],
+                    text=[f"Bullish Pullback<br>Close: ${price:.2f}<br>Prev High: ${prev_high:.2f}" 
+                          for price, prev_high in zip(bullish['price'], bullish['previous_high'])],
                     hovertemplate='%{text}<extra></extra>'
                 ), row=1 if show_volume else None, col=1 if show_volume else None)
         
