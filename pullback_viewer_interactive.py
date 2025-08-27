@@ -193,7 +193,7 @@ class PullbackViewer:
         self.df = None
         self.pullbacks = None
         
-    def fetch_data(self, symbol, period_days=30, frequency_minutes=5):
+    def fetch_data(self, symbol, period_days=30, frequency_minutes=5, force_refresh=False):
         """
         Fetch historical data for the specified symbol
         
@@ -201,8 +201,14 @@ class PullbackViewer:
             symbol (str): Stock symbol
             period_days (int): Number of days of data to fetch
             frequency_minutes (int): Frequency in minutes (1, 5, 15, 30, 60)
+            force_refresh (bool): Force refresh of authentication tokens
         """
         print(f"Fetching data for {symbol}...")
+        
+        # Force refresh tokens if requested
+        if force_refresh:
+            print("Force refreshing authentication tokens...")
+            self.data_handler.ensure_valid_tokens(refresh=True)
         
         # Calculate date range
         end_date = datetime.now()
@@ -367,7 +373,7 @@ class PullbackViewer:
                     text=[f"Bearish Pullback<br>Price: ${price:.2f}<br>Prev High: ${prev_high:.2f}" 
                           for price, prev_high in zip(bearish['price'], bearish['previous_high'])],
                     hovertemplate='%{text}<extra></extra>'
-                ), row=1 if show_volume else None, col=1)
+                ), row=1 if show_volume else None, col=1 if show_volume else None)
             
             # Bullish pullbacks (green dots)
             bullish = self.pullbacks[self.pullbacks['type'] == 'bullish']
@@ -386,7 +392,7 @@ class PullbackViewer:
                     text=[f"Bullish Pullback<br>Price: ${price:.2f}<br>Prev Low: ${prev_low:.2f}" 
                           for price, prev_low in zip(bullish['price'], bullish['previous_low'])],
                     hovertemplate='%{text}<extra></extra>'
-                ), row=1 if show_volume else None, col=1)
+                ), row=1 if show_volume else None, col=1 if show_volume else None)
         
         # Add volume bars if requested
         if show_volume:
@@ -476,6 +482,8 @@ Examples:
     parser.add_argument('--structure-only', action='store_true', 
                        help='Show only structural pullbacks (last of each type)')
     parser.add_argument('--no-volume', action='store_true', help='Hide volume chart')
+    parser.add_argument('--force-refresh', action='store_true', 
+                       help='Force refresh authentication tokens')
     
     args = parser.parse_args()
     
@@ -489,10 +497,11 @@ Examples:
     print(f"Period: {args.days} days")
     print(f"Frequency: {args.frequency} minutes")
     print(f"Structure Only: {args.structure_only}")
+    print(f"Force Refresh: {args.force_refresh}")
     print("="*60)
     
     # Fetch data
-    if not viewer.fetch_data(args.symbol.upper(), args.days, args.frequency):
+    if not viewer.fetch_data(args.symbol.upper(), args.days, args.frequency, args.force_refresh):
         print("Failed to fetch data. Exiting.")
         return
     

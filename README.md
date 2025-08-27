@@ -114,12 +114,34 @@ The interactive chart includes:
 - **Time Navigation**: Click and drag on time axis
 - **Volume Correlation**: Optional volume bars with price-matched colors
 
+## Repository Structure
+
+```
+pullback-viewer/
+├── README.md                           # This documentation
+├── pullback_viewer_interactive.py     # Main Python script
+├── charts/                            # Pre-generated interactive charts
+│   ├── AAPL_pullback_viewer_*.html   # Apple charts (multiple versions)
+│   ├── NVDA_pullback_viewer_*.html   # NVIDIA chart (structure-only)
+│   ├── TSLA_pullback_viewer_*.html   # Tesla chart
+│   ├── MSFT_pullback_viewer_*.html   # Microsoft chart (30min)
+│   ├── GOOGL_pullback_viewer_*.html  # Google chart (structure-only)
+│   ├── SPY_pullback_viewer_*.html    # S&P 500 ETF (1min data)
+│   ├── QQQ_pullback_viewer_*.html    # NASDAQ ETF (no-volume)
+│   └── AMD_pullback_viewer_*.html    # AMD chart (15min)
+├── examples/                          # Example configurations
+├── docs/                             # Additional documentation
+└── cs_tokens.json                    # API authentication tokens
+```
+
 ## Files Generated
 
 Each run creates an HTML file with format:
 `{SYMBOL}_pullback_viewer_{YYYYMMDD_HHMMSS}.html`
 
 Example: `AAPL_pullback_viewer_20250826_210331.html`
+
+All generated charts are automatically saved to the `charts/` directory.
 
 ## How to View Interactive Charts
 
@@ -134,9 +156,14 @@ If you want to view the pre-generated charts without running the Python script:
 5. **Double-click the downloaded HTML file** to open it in your browser
 
 **Available Charts:**
-- 📱 **AAPL**: Apple Inc. pullback analysis
-- 🎮 **NVDA**: NVIDIA Corporation pullback analysis  
+- 📱 **AAPL**: Apple Inc. pullback analysis (multiple timeframes)
+- 🎮 **NVDA**: NVIDIA Corporation pullback analysis (structure-only mode)
 - 🚗 **TSLA**: Tesla Inc. pullback analysis
+- 💻 **MSFT**: Microsoft Corporation (30min frequency, 3 days)
+- 🔍 **GOOGL**: Google/Alphabet (structure-only, 15min frequency)
+- 📊 **SPY**: S&P 500 ETF (1min frequency, high-resolution data)
+- 🏛️ **QQQ**: NASDAQ ETF (no-volume chart style)
+- 🔥 **AMD**: Advanced Micro Devices (15min frequency)
 
 ### 🖥️ Open Local HTML Charts
 
