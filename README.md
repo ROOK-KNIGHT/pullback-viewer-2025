@@ -120,3 +120,38 @@ Each run creates an HTML file with format:
 `{SYMBOL}_pullback_viewer_{YYYYMMDD_HHMMSS}.html`
 
 Example: `AAPL_pullback_viewer_20250826_210331.html`
+
+## How to Open HTML Charts
+
+### Method 1: Double-click (Easiest)
+Simply double-click on any generated HTML file to open it in your default web browser.
+
+### Method 2: Command Line
+```bash
+# Open specific chart
+open AAPL_pullback_viewer_20250826_210331.html
+
+# On Windows
+start AAPL_pullback_viewer_20250826_210331.html
+
+# On Linux
+xdg-open AAPL_pullback_viewer_20250826_210331.html
+```
+
+### Method 3: From Browser
+1. Open your web browser
+2. Press `Ctrl+O` (or `Cmd+O` on Mac)
+3. Navigate to the HTML file and select it
+4. The interactive chart will load with full functionality
+
+### Method 4: Drag and Drop
+Drag the HTML file directly into any open browser window or tab.
+
+### Chart Interaction Tips
+Once opened, you can:
+- **Zoom**: Mouse wheel or click-drag to select area
+- **Pan**: Click and drag to move around
+- **Hover**: Mouse over points for detailed information
+- **Toggle**: Click legend items to show/hide data series
+- **Reset**: Double-click to reset zoom
+- **Download**: Use browser's save/print functions to export
