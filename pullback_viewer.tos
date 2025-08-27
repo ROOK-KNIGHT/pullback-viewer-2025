@@ -1,0 +1,31 @@
+# Pullback Viewer (Thinkscript version)
+# Based on emka's Pullback Viewer logic
+
+declare upper;
+
+# Define candle parts
+def o = open;
+def h = high;
+def l = low;
+def c = close;
+
+# Bullish pullback condition:
+def bullishPB = c > h[1] and c > o;
+
+# Bearish pullback condition:
+def bearishPB = c < l[1] and c < o;
+
+# Plot markers
+plot BullishSignal = if bullishPB then h + (h - l) * 0.1 else Double.NaN;
+BullishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
+BullishSignal.SetDefaultColor(Color.GREEN);
+BullishSignal.SetLineWeight(3);
+
+plot BearishSignal = if bearishPB then l - (h - l) * 0.1 else Double.NaN;
+BearishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
+BearishSignal.SetDefaultColor(Color.RED);
+BearishSignal.SetLineWeight(3);
+
+# Optional: Add labels for confirmation
+#AddChartBubble(bullishPB, h, "Bull PB", Color.GREEN, yes);
+#AddChartBubble(bearishPB, l, "Bear PB", Color.RED, no);

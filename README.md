@@ -85,6 +85,33 @@ python3 pullback_viewer_interactive.py NVDA --days 2 --frequency 15 --structure-
 ```
 Output: `Identified 2 pullback points`
 
+## ThinkScript Version
+
+For ThinkorSwim users, a ThinkScript version is available (`pullback_viewer.tos`) that provides the same pullback identification logic directly in your ThinkorSwim charts.
+
+### Installation in ThinkorSwim:
+1. **Download** the `pullback_viewer.tos` file from the repository
+2. **Open ThinkorSwim** and go to Charts
+3. **Click Studies** → **Edit Studies** → **Import**
+4. **Select** the downloaded `.tos` file
+5. **Apply** the study to your chart
+
+### Features:
+- **Green dots** above candles for bullish pullbacks
+- **Red dots** below candles for bearish pullbacks
+- **Same logic** as the Python version: clean body closes outside previous candle range
+- **Optional chart bubbles** (uncomment the AddChartBubble lines for labels)
+- **Customizable** colors and positioning
+
+### ThinkScript Logic:
+```thinkscript
+# Bullish pullback: current close > previous high AND bullish candle
+def bullishPB = c > h[1] and c > o;
+
+# Bearish pullback: current close < previous low AND bearish candle  
+def bearishPB = c < l[1] and c < o;
+```
+
 ## Use Cases
 
 As mentioned in the original TradingView indicator, pullbacks can be used to:
@@ -120,6 +147,7 @@ The interactive chart includes:
 pullback-viewer/
 ├── README.md                           # This documentation
 ├── pullback_viewer_interactive.py     # Main Python script
+├── pullback_viewer.tos                # ThinkScript version for ThinkorSwim
 ├── examples/                          # Interactive chart examples
 │   ├── AAPL_pullback_viewer_*.html   # Apple charts (multiple versions)
 │   ├── NVDA_pullback_viewer_*.html   # NVIDIA chart (structure-only)
