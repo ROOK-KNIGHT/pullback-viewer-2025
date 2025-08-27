@@ -121,12 +121,31 @@ Each run creates an HTML file with format:
 
 Example: `AAPL_pullback_viewer_20250826_210331.html`
 
-## How to Open HTML Charts
+## How to View Interactive Charts
 
-### Method 1: Double-click (Easiest)
+### 📥 Download Charts from GitHub (Recommended for Viewers)
+
+If you want to view the pre-generated charts without running the Python script:
+
+1. **Go to the GitHub repository**: [pullback-viewer-2025](https://github.com/ROOK-KNIGHT/pullback-viewer-2025)
+2. **Click on any HTML file** (e.g., `NVDA_pullback_viewer_20250826_210913.html`)
+3. **Click the "Download raw file" button** (download icon in the top-right of the file view)
+4. **Save the file** to your computer
+5. **Double-click the downloaded HTML file** to open it in your browser
+
+**Available Charts:**
+- 📱 **AAPL**: Apple Inc. pullback analysis
+- 🎮 **NVDA**: NVIDIA Corporation pullback analysis  
+- 🚗 **TSLA**: Tesla Inc. pullback analysis
+
+### 🖥️ Open Local HTML Charts
+
+If you've generated charts locally using the Python script:
+
+#### Method 1: Double-click (Easiest)
 Simply double-click on any generated HTML file to open it in your default web browser.
 
-### Method 2: Command Line
+#### Method 2: Command Line
 ```bash
 # Open specific chart
 open AAPL_pullback_viewer_20250826_210331.html
@@ -138,13 +157,13 @@ start AAPL_pullback_viewer_20250826_210331.html
 xdg-open AAPL_pullback_viewer_20250826_210331.html
 ```
 
-### Method 3: From Browser
+#### Method 3: From Browser
 1. Open your web browser
 2. Press `Ctrl+O` (or `Cmd+O` on Mac)
 3. Navigate to the HTML file and select it
 4. The interactive chart will load with full functionality
 
-### Method 4: Drag and Drop
+#### Method 4: Drag and Drop
 Drag the HTML file directly into any open browser window or tab.
 
 ### Chart Interaction Tips
