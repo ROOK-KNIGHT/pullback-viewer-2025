@@ -15,6 +15,10 @@ def bullishPB = c > h[1] and c > o;
 # Bearish pullback condition:
 def bearishPB = c < l[1] and c < o;
 
+# --- Remember last bullish and bearish signal levels ---
+def lastBullish = if bullishPB then c else lastBullish[1];
+def lastBearish = if bearishPB then c else lastBearish[1];
+
 # Plot markers
 plot BullishSignal = if bullishPB then h + (h - l) * 0.1 else Double.NaN;
 BullishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
@@ -25,6 +29,15 @@ plot BearishSignal = if bearishPB then l - (h - l) * 0.1 else Double.NaN;
 BearishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
 BearishSignal.SetDefaultColor(Color.RED);
 BearishSignal.SetLineWeight(3);
+
+# --- Horizontal lines at last signals ---
+plot BullishLine = if IsNaN(c) then Double.NaN else lastBullish;
+BullishLine.SetDefaultColor(Color.GREEN);
+BullishLine.SetStyle(Curve.SHORT_DASH);
+
+plot BearishLine = if IsNaN(c) then Double.NaN else lastBearish;
+BearishLine.SetDefaultColor(Color.RED);
+BearishLine.SetStyle(Curve.SHORT_DASH);
 
 # Optional: Add labels for confirmation
 #AddChartBubble(bullishPB, h, "Bull PB", Color.GREEN, yes);

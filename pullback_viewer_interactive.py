@@ -382,6 +382,32 @@ class PullbackViewer:
                           for price, prev_low in zip(bearish['price'], bearish['previous_low'])],
                     hovertemplate='%{text}<extra></extra>'
                 ), row=1 if show_volume else None, col=1 if show_volume else None)
+                
+                # Create step-like bearish level line
+                bearish_levels = []
+                bearish_times = []
+                current_bearish_level = None
+                
+                for i, row in self.df.iterrows():
+                    # Check if this timestamp has a bearish pullback
+                    bearish_at_time = bearish[bearish['datetime'] == row['datetime']]
+                    if len(bearish_at_time) > 0:
+                        current_bearish_level = bearish_at_time.iloc[0]['price']
+                    
+                    bearish_times.append(row['datetime'])
+                    bearish_levels.append(current_bearish_level)
+                
+                # Add the step-like bearish level line
+                if current_bearish_level is not None:
+                    fig.add_trace(go.Scatter(
+                        x=bearish_times,
+                        y=bearish_levels,
+                        mode='lines',
+                        line=dict(color='red', dash='dash', width=2),
+                        name='Bearish Level',
+                        showlegend=True,
+                        hovertemplate='Bearish Level: $%{y:.2f}<extra></extra>'
+                    ), row=1 if show_volume else None, col=1 if show_volume else None)
             
             # Bullish pullbacks (green dots) - positioned at top of candles
             bullish = self.pullbacks[self.pullbacks['type'] == 'bullish']
@@ -408,6 +434,32 @@ class PullbackViewer:
                           for price, prev_high in zip(bullish['price'], bullish['previous_high'])],
                     hovertemplate='%{text}<extra></extra>'
                 ), row=1 if show_volume else None, col=1 if show_volume else None)
+                
+                # Create step-like bullish level line
+                bullish_levels = []
+                bullish_times = []
+                current_bullish_level = None
+                
+                for i, row in self.df.iterrows():
+                    # Check if this timestamp has a bullish pullback
+                    bullish_at_time = bullish[bullish['datetime'] == row['datetime']]
+                    if len(bullish_at_time) > 0:
+                        current_bullish_level = bullish_at_time.iloc[0]['price']
+                    
+                    bullish_times.append(row['datetime'])
+                    bullish_levels.append(current_bullish_level)
+                
+                # Add the step-like bullish level line
+                if current_bullish_level is not None:
+                    fig.add_trace(go.Scatter(
+                        x=bullish_times,
+                        y=bullish_levels,
+                        mode='lines',
+                        line=dict(color='green', dash='dash', width=2),
+                        name='Bullish Level',
+                        showlegend=True,
+                        hovertemplate='Bullish Level: $%{y:.2f}<extra></extra>'
+                    ), row=1 if show_volume else None, col=1 if show_volume else None)
         
         # Add volume bars if requested
         if show_volume:
