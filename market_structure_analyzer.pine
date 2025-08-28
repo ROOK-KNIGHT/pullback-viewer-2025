@@ -1,0 +1,120 @@
+//@version=6
+indicator(title='MarketAnalysis', shorttitle='MarketView', overlay=true)
+
+// Input for line width (from -10 to 10)
+lineWidth = input.int(title="Line Width", defval=1, minval=-10, maxval=10)
+
+// Input for line color
+lineColor = input.color(title="Line Color", defval=color.blue)
+
+// Initialize variables
+var float bosHigh = na
+var float bosLow = na
+var float prevBosHigh = na
+var float prevBosLow = na
+var bool isBullishMB = false
+var bool isBearishMB = false
+
+// Initialize arrays to store last MBs
+var int mbCount = 0
+var float[] mbArray = array.new_float(0)
+
+// Initialize separate arrays to track sequences
+var int[] bullishSequence = array.new_int(0)
+var int[] bearishSequence = array.new_int(0)
+
+// Initialize market stage
+var string marketStage = "Neutral"
+
+// Create a table to display the market stage
+var table marketStageTable = table.new(position.top_right, 1, 1, border_width=1)
+
+// Set initial values for bosHigh and bosLow
+if na(bosHigh)
+    bosHigh := high
+if na(bosLow)
+    bosLow := low
+
+// Logic for BOS High (Potential Bullish MB)
+if close > bosHigh
+    prevBosHigh := bosHigh
+    prevBosLow := bosLow
+    bosHigh := high
+    bosLow := low
+    isBullishMB := false
+    int i = 1
+    bool waveFound = true
+    while waveFound and i < 2000
+        if close[i] < open[i]
+            if close[i] < low[i+1]
+                waveFound := false
+        if low[i] < bosLow
+            bosLow := low[i]
+            // Validate Bullish MB
+            if bosLow != prevBosLow and not isBullishMB
+                isBullishMB := true
+                array.push(mbArray, 1.0)  // 1.0 for Bullish MB
+                array.push(bullishSequence, 1)
+                array.clear(bearishSequence)  // Clear Bearish sequence when Bullish MB is valid
+        i += 1
+
+// Logic for BOS Low (Potential Bearish MB)
+if close < bosLow
+    prevBosHigh := bosHigh
+    prevBosLow := bosLow
+    bosLow := low
+    bosHigh := high
+    isBearishMB := false
+    int i = 1
+    bool waveFound = true
+    while waveFound and i < 2000
+        if close[i] > open[i]
+            if close[i] > high[i+1]
+                waveFound := false
+        if high[i] > bosHigh
+            bosHigh := high[i]
+            // Validate Bearish MB
+            if bosHigh != prevBosHigh and not isBearishMB
+                isBearishMB := true
+                array.push(mbArray, -1.0)  // -1.0 for Bearish MB
+                array.push(bearishSequence, 1)
+                array.clear(bullishSequence)  // Clear Bullish sequence when Bearish MB is valid
+        i += 1
+
+// Ensure only the last 8 MBs are kept in the array
+if array.size(mbArray) > 8
+    array.shift(mbArray)
+
+// Determine market stage based on the logic
+if array.size(mbArray) >= 2
+    int lastBullishCount = array.size(bullishSequence)
+    int lastBearishCount = array.size(bearishSequence)
+    float lastMB = array.get(mbArray, array.size(mbArray) - 1)
+    
+    // Check for Reaccumulation first
+    if lastBullishCount >= 2 and lastBearishCount > 0 and lastBearishCount <= 3
+        marketStage := "Reaccumulation"
+    // Check for Redistribution
+    else if lastBearishCount >= 2 and lastBullishCount > 0 and lastBullishCount <= 3
+        marketStage := "Redistribution"
+    // Check for Distribution (only if not in Reaccumulation or Redistribution)
+    else if lastBearishCount > 3
+        marketStage := "Distribution"
+        array.clear(bearishSequence)  // Reset sequence
+    // Check for Accumulation (only if not in Reaccumulation or Redistribution)
+    else if lastBullishCount > 3
+        marketStage := "Accumulation"
+        array.clear(bullishSequence)  // Reset sequence
+    else if lastMB == 1.0
+        marketStage := "Accumulation"
+    else if lastMB == -1.0
+        marketStage := "Distribution"
+    else
+        marketStage := "Neutral"
+
+// Update the table with the current market stage
+table.cell(marketStageTable, 0, 0, text=marketStage, bgcolor=(marketStage == "Accumulation" or marketStage == "Reaccumulation" ? color.new(color.green, 80) : color.new(color.red, 80)), text_color=color.white)
+
+// Plotting BOS High and BOS Low with the same color and adjustable line width
+plot(title='BosHigh', series=bosHigh, color=lineColor, linewidth=lineWidth, offset=0, style=plot.style_stepline)
+plot(title='BosLow', series=bosLow, color=lineColor, linewidth=lineWidth, offset=0, style=plot.style_stepline)

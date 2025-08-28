@@ -33,15 +33,13 @@ def newBosLow = if bullishMB then l else
                 if bearishMB then l else bosLow[1];
 
 # Wave analysis (simplified for ThinkScript)
-def waveLookback = Min(maxLookback, BarNumber());
-
-# For bullish MB, find the lowest low in lookback period
+# Using fixed lookback since ThinkScript requires constants
 def bullishWaveLow = if bullishMB then 
-    Lowest(l, waveLookback) else newBosLow;
+    Lowest(l, maxLookback) else newBosLow;
 
 # For bearish MB, find the highest high in lookback period  
 def bearishWaveHigh = if bearishMB then 
-    Highest(h, waveLookback) else newBosHigh;
+    Highest(h, maxLookback) else newBosHigh;
 
 # Final BOS levels with wave validation
 def finalBosHigh = if bullishMB then bearishWaveHigh else
@@ -97,53 +95,38 @@ BearishMBPoints.SetPaintingStrategy(PaintingStrategy.POINTS);
 BearishMBPoints.SetDefaultColor(Color.RED);
 BearishMBPoints.SetLineWeight(4);
 
-# Market stage background color
-DefineGlobalColor("Accumulation", Color.DARK_GREEN);
-DefineGlobalColor("Distribution", Color.DARK_RED);
-DefineGlobalColor("Reaccumulation", Color.GREEN);
-DefineGlobalColor("Redistribution", Color.RED);
-DefineGlobalColor("Neutral", Color.GRAY);
-
-# Background color based on market stage
+# Background color based on market stage (using direct colors)
 AssignPriceColor(
     if !showMarketStage then Color.CURRENT else
-    if marketStage == 1 then GlobalColor("Accumulation") else
-    if marketStage == -1 then GlobalColor("Distribution") else
-    if marketStage == 2 then GlobalColor("Reaccumulation") else
-    if marketStage == -2 then GlobalColor("Redistribution") else
-    GlobalColor("Neutral")
+    if marketStage == 1 then Color.DARK_GREEN else
+    if marketStage == -1 then Color.DARK_RED else
+    if marketStage == 2 then Color.GREEN else
+    if marketStage == -2 then Color.RED else
+    Color.GRAY
 );
 
 # Market stage labels (optional - uncomment to enable)
 def showStageLabel = showMarketStage and (marketStage != marketStage[1]);
 
-AddChartBubble(showStageLabel and marketStage == 1, h, "ACCUM", GlobalColor("Accumulation"), yes);
-AddChartBubble(showStageLabel and marketStage == -1, l, "DIST", GlobalColor("Distribution"), no);
-AddChartBubble(showStageLabel and marketStage == 2, h, "REACCUM", GlobalColor("Reaccumulation"), yes);
-AddChartBubble(showStageLabel and marketStage == -2, l, "REDIST", GlobalColor("Redistribution"), no);
-AddChartBubble(showStageLabel and marketStage == 0, (h + l) / 2, "NEUTRAL", GlobalColor("Neutral"), yes);
+AddChartBubble(showStageLabel and marketStage == 1, h, "ACCUM", Color.DARK_GREEN, yes);
+AddChartBubble(showStageLabel and marketStage == -1, l, "DIST", Color.DARK_RED, no);
+AddChartBubble(showStageLabel and marketStage == 2, h, "REACCUM", Color.GREEN, yes);
+AddChartBubble(showStageLabel and marketStage == -2, l, "REDIST", Color.RED, no);
+AddChartBubble(showStageLabel and marketStage == 0, (h + l) / 2, "NEUTRAL", Color.GRAY, yes);
 
 # Optional: MB point labels with details
 #AddChartBubble(validBullishMB, h, "Bull MB\nH:" + finalBosHigh + "\nL:" + finalBosLow, Color.GREEN, yes);
 #AddChartBubble(validBearishMB, l, "Bear MB\nH:" + finalBosHigh + "\nL:" + finalBosLow, Color.RED, no);
 
-# Study title and information
-def studyTitle = "Market Structure Analyzer - BOS: H=" + Round(finalBosHigh, 2) + " L=" + Round(finalBosLow, 2);
+# Current market stage text (simplified for ThinkScript)
+def stageNum = marketStage;
 
-# Current market stage text
-def stageText = if marketStage == 1 then "Accumulation"
-                else if marketStage == -1 then "Distribution"
-                else if marketStage == 2 then "Reaccumulation"
-                else if marketStage == -2 then "Redistribution"
-                else "Neutral";
-
-# Add study information label
-AddLabel(showMarketStage, "Stage: " + stageText, 
-    if marketStage == 1 then Color.GREEN
-    else if marketStage == -1 then Color.RED
-    else if marketStage == 2 then Color.LIGHT_GREEN
-    else if marketStage == -2 then Color.PINK
-    else Color.GRAY);
+# Add study information labels
+AddLabel(showMarketStage and marketStage == 1, "Stage: Accumulation", Color.GREEN);
+AddLabel(showMarketStage and marketStage == -1, "Stage: Distribution", Color.RED);
+AddLabel(showMarketStage and marketStage == 2, "Stage: Reaccumulation", Color.LIGHT_GREEN);
+AddLabel(showMarketStage and marketStage == -2, "Stage: Redistribution", Color.PINK);
+AddLabel(showMarketStage and marketStage == 0, "Stage: Neutral", Color.GRAY);
 
 AddLabel(showBOSLines, "BOS H: " + Round(finalBosHigh, 2) + " L: " + Round(finalBosLow, 2), Color.BLUE);
 
