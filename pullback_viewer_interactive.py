@@ -182,7 +182,7 @@ class StandaloneDataHandler:
             return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
         return None
 
-class TradingDeskViewer:
+class MarketStructureAnalyzer:
     def __init__(self):
         self.data_handler = StandaloneDataHandler()
         self.df = None
@@ -547,7 +547,7 @@ class TradingDeskViewer:
         
         # Update layout
         fig.update_layout(
-            title=f'{symbol} - Interactive Trading Desk Viewer',
+            title=f'{symbol} - Market Structure Analyzer',
             xaxis_title='Time',
             yaxis_title='Price ($)',
             template='plotly_dark',
@@ -588,13 +588,13 @@ class TradingDeskViewer:
 def main():
     """Main function"""
     parser = argparse.ArgumentParser(
-        description="Interactive Trading Desk Viewer - Identify market stages based on BOS",
+        description="Market Structure Analyzer - Identify market stages based on BOS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python3 trading_desk_viewer.py AAPL
-  python3 trading_desk_viewer.py NVDA --days 7 --frequency 1
-  python3 trading_desk_viewer.py TSLA --no-volume --line-width 2 --line-color red
+  python3 pullback_viewer_interactive.py AAPL
+  python3 pullback_viewer_interactive.py NVDA --days 7 --frequency 1
+  python3 pullback_viewer_interactive.py TSLA --no-volume --line-width 2 --line-color red
         """
     )
     
@@ -610,11 +610,11 @@ Examples:
     
     args = parser.parse_args()
     
-    # Initialize viewer
-    viewer = TradingDeskViewer()
+    # Initialize analyzer
+    analyzer = MarketStructureAnalyzer()
     
     print("="*60)
-    print("INTERACTIVE TRADING DESK VIEWER")
+    print("MARKET STRUCTURE ANALYZER")
     print("="*60)
     print(f"Symbol: {args.symbol.upper()}")
     print(f"Period: {args.days} days")
@@ -625,19 +625,19 @@ Examples:
     print("="*60)
     
     # Fetch data
-    if not viewer.fetch_data(args.symbol.upper(), args.days, args.frequency, args.force_refresh):
+    if not analyzer.fetch_data(args.symbol.upper(), args.days, args.frequency, args.force_refresh):
         print("Failed to fetch data. Exiting.")
         return
     
     # Compute market stages
-    viewer.compute_market_stages()
+    analyzer.compute_market_stages()
     
     # Analyze market stage
-    viewer.analyze_market_stage()
+    analyzer.analyze_market_stage()
     
     # Create and show interactive chart
     print("\nGenerating interactive chart...")
-    fig = viewer.create_interactive_chart(
+    fig = analyzer.create_interactive_chart(
         args.symbol.upper(), 
         show_volume=not args.no_volume,
         line_width=args.line_width,
@@ -653,7 +653,7 @@ Examples:
         os.makedirs(output_dir, exist_ok=True)
         
         # Save as HTML file in examples directory
-        filename = f"{args.symbol.upper()}_trading_desk_viewer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        filename = f"{args.symbol.upper()}_market_structure_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         filepath = os.path.join(output_dir, filename)
         fig.write_html(filepath)
         print(f"Chart saved as: {filepath}")
