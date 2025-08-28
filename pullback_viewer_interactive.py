@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-Interactive Pullback Viewer
-Based on TradingView's Pullback Viewer by emka
+Interactive Range-Based Market Analysis Viewer
+Advanced implementation with dynamic bullish/bearish range tracking
 
-This script creates an interactive chart that identifies valid pullback points in trending markets.
-A valid pullback requires a clean candle body close outside the previous candle's range.
+This script creates an interactive chart that identifies and tracks dynamic market ranges
+with sophisticated high/low updating rules and structural pivot identification.
 
 Features:
+- Dynamic bullish/bearish range state management
+- Structural high/low identification (pivots with confirmation on both sides)
+- Body-based validation for conservative range updates
+- Dynamic high/low tracking with specific update rules
+- Range break detection and momentum assessment
 - Real-time data fetching using existing handlers
 - Interactive plotly chart with zoom, pan, and hover
-- Bullish and bearish pullback identification
-- Configurable parameters
-- Support for different timeframes
 """
 
 import sys
@@ -187,11 +189,11 @@ class StandaloneDataHandler:
             return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
         return None
 
-class PullbackViewer:
+class RangeBasedAnalyzer:
     def __init__(self):
         self.data_handler = StandaloneDataHandler()
         self.df = None
-        self.pullbacks = None
+        self.range_data = None
         
     def fetch_data(self, symbol, period_days=30, frequency_minutes=5, force_refresh=False):
         """
@@ -248,77 +250,192 @@ class PullbackViewer:
             print(f"Error fetching data: {e}")
             return False
     
-    def identify_pullbacks(self, structure_only=False):
+    def identify_structural_pivots(self, lookback=3):
         """
-        Identify valid pullback points in the data
+        Identify structural highs and lows (pivots with confirmation on both sides)
         
         Args:
-            structure_only (bool): If True, only show structural pullbacks (last of each type)
+            lookback (int): Number of candles to look back/forward for confirmation
         """
-        if self.df is None or len(self.df) < 3:
-            print("Insufficient data for pullback analysis")
+        if self.df is None or len(self.df) < (lookback * 2 + 1):
+            return [], []
+            
+        df = self.df.copy()
+        structural_highs = []
+        structural_lows = []
+        
+        # Check each candle for structural pivots (excluding edges)
+        for i in range(lookback, len(df) - lookback):
+            current_high = df.iloc[i]['high']
+            current_low = df.iloc[i]['low']
+            
+            # Check for structural high (higher than all surrounding highs)
+            is_structural_high = True
+            for j in range(i - lookback, i + lookback + 1):
+                if j != i and df.iloc[j]['high'] >= current_high:
+                    is_structural_high = False
+                    break
+            
+            if is_structural_high:
+                structural_highs.append({
+                    'index': i,
+                    'datetime': df.iloc[i]['datetime'],
+                    'price': current_high,
+                    'type': 'structural_high'
+                })
+            
+            # Check for structural low (lower than all surrounding lows)
+            is_structural_low = True
+            for j in range(i - lookback, i + lookback + 1):
+                if j != i and df.iloc[j]['low'] <= current_low:
+                    is_structural_low = False
+                    break
+            
+            if is_structural_low:
+                structural_lows.append({
+                    'index': i,
+                    'datetime': df.iloc[i]['datetime'],
+                    'price': current_low,
+                    'type': 'structural_low'
+                })
+        
+        return structural_highs, structural_lows
+    
+    def analyze_dynamic_ranges(self, lookback=3):
+        """
+        Implement the complex range-based algorithm with dynamic high/low tracking
+        """
+        if self.df is None or len(self.df) < 10:
+            print("Insufficient data for range analysis")
             return
             
         df = self.df.copy()
-        pullbacks = []
         
-        # Analyze each candle starting from the second one
+        # Get structural pivots
+        structural_highs, structural_lows = self.identify_structural_pivots(lookback)
+        
+        # Initialize range tracking variables
+        range_states = []
+        current_state = None  # 'bullish' or 'bearish'
+        current_high = None
+        current_low = None
+        range_high_locked = False
+        range_low_locked = False
+        
+        # Track last major movements for range determination
+        last_sell_before_buy_index = None
+        last_buy_before_sell_index = None
+        
+        print(f"Found {len(structural_highs)} structural highs and {len(structural_lows)} structural lows")
+        
+        # Process each candle
         for i in range(1, len(df)):
             current = df.iloc[i]
             previous = df.iloc[i-1]
             
-            # Check for bullish pullback (in a bullish trend)
-            # Current candle body closes above previous candle high - indicates bullish momentum
-            if current['close'] > previous['high'] and current['open'] < current['close']:
-                pullbacks.append({
-                    'index': i,
-                    'datetime': current['datetime'],
-                    'type': 'bullish',
-                    'price': current['close'],
-                    'previous_high': previous['high'],
-                    'valid': True
-                })
+            # Determine if we have a directional break (body-based)
+            body_above_prev_high = (current['close'] > previous['high'] and 
+                                  current['open'] > previous['high'])
+            body_below_prev_low = (current['close'] < previous['low'] and 
+                                 current['open'] < previous['low'])
             
-            # Check for bearish pullback (in a bearish trend)
-            # Current candle body closes below previous candle low - indicates bearish momentum
-            elif current['close'] < previous['low'] and current['open'] > current['close']:
-                pullbacks.append({
-                    'index': i,
-                    'datetime': current['datetime'],
-                    'type': 'bearish',
-                    'price': current['close'],
-                    'previous_low': previous['low'],
-                    'valid': True
-                })
-        
-        # If structure_only, keep only the last pullback of each type in recent range
-        if structure_only:
-            # Group by type and keep only the most recent ones
-            bullish_pullbacks = [p for p in pullbacks if p['type'] == 'bullish']
-            bearish_pullbacks = [p for p in pullbacks if p['type'] == 'bearish']
-            
-            filtered_pullbacks = []
-            if bullish_pullbacks:
-                filtered_pullbacks.append(bullish_pullbacks[-1])  # Most recent bullish
-            if bearish_pullbacks:
-                filtered_pullbacks.append(bearish_pullbacks[-1])  # Most recent bearish
+            # Check for range state changes
+            if body_above_prev_high and current_state != 'bullish':
+                # Switch to bullish range
+                current_state = 'bullish'
+                range_high_locked = False
+                range_low_locked = False
                 
-            pullbacks = filtered_pullbacks
+                # Find the last "sell before buy" for low determination
+                if last_sell_before_buy_index is not None:
+                    # Find lowest low after the last sell signal
+                    low_search_start = max(0, last_sell_before_buy_index)
+                    lowest_low = df.iloc[low_search_start:i+1]['low'].min()
+                    current_low = lowest_low
+                else:
+                    current_low = current['low']
+                
+                current_high = current['high']
+                
+            elif body_below_prev_low and current_state != 'bearish':
+                # Switch to bearish range
+                current_state = 'bearish'
+                range_high_locked = False
+                range_low_locked = False
+                
+                # Find the last "buy before sell" for high determination
+                if last_buy_before_sell_index is not None:
+                    # Find highest high after the last buy signal
+                    high_search_start = max(0, last_buy_before_sell_index)
+                    highest_high = df.iloc[high_search_start:i+1]['high'].max()
+                    current_high = highest_high
+                else:
+                    current_high = current['high']
+                
+                current_low = current['low']
+            
+            # Update highs and lows based on current range state
+            if current_state == 'bullish' and current_high is not None:
+                # In bullish range: update high only when candle body exceeds current high
+                if (current['close'] > current_high or current['open'] > current_high):
+                    current_high = current['high']
+                    # Reset low tracking when high is updated
+                    if not range_low_locked:
+                        # Find new low based on last sell before this new high
+                        for j in range(i-1, -1, -1):
+                            if df.iloc[j]['close'] < df.iloc[j-1]['low'] if j > 0 else False:
+                                low_search_start = j
+                                current_low = df.iloc[low_search_start:i+1]['low'].min()
+                                break
+                
+            elif current_state == 'bearish' and current_low is not None:
+                # In bearish range: update low only when candle body goes below current low
+                if (current['close'] < current_low or current['open'] < current_low):
+                    current_low = current['low']
+                    # Reset high tracking when low is updated
+                    if not range_high_locked:
+                        # Find new high based on last buy before this new low
+                        for j in range(i-1, -1, -1):
+                            if df.iloc[j]['close'] > df.iloc[j-1]['high'] if j > 0 else False:
+                                high_search_start = j
+                                current_high = df.iloc[high_search_start:i+1]['high'].max()
+                                break
+            
+            # Track major movements for future range calculations
+            if current['close'] < previous['low']:
+                last_sell_before_buy_index = i
+            elif current['close'] > previous['high']:
+                last_buy_before_sell_index = i
+            
+            # Store range state for this candle
+            range_states.append({
+                'index': i,
+                'datetime': current['datetime'],
+                'state': current_state,
+                'range_high': current_high,
+                'range_low': current_low,
+                'price': current['close']
+            })
         
-        self.pullbacks = pd.DataFrame(pullbacks)
-        print(f"Identified {len(pullbacks)} pullback points")
+        # Convert to DataFrame
+        self.range_data = pd.DataFrame(range_states)
         
-        return self.pullbacks
+        # Add structural pivots to the data
+        self.structural_highs = pd.DataFrame(structural_highs)
+        self.structural_lows = pd.DataFrame(structural_lows)
+        
+        print(f"Analyzed {len(range_states)} range states")
+        if len(range_states) > 0:
+            bullish_count = len([r for r in range_states if r['state'] == 'bullish'])
+            bearish_count = len([r for r in range_states if r['state'] == 'bearish'])
+            print(f"Bullish periods: {bullish_count}")
+            print(f"Bearish periods: {bearish_count}")
+        
+        return self.range_data
     
-    def create_interactive_chart(self, symbol, show_volume=True, structure_only=False, output_dir="examples"):
+    def create_interactive_chart(self, symbol, show_volume=True, output_dir="examples"):
         """
-        Create an interactive plotly chart with pullback points
-        
-        Args:
-            symbol (str): Stock symbol for chart title
-            show_volume (bool): Whether to show volume subplot
-            structure_only (bool): Whether to show only structural pullbacks
-            output_dir (str): Directory to save the chart file
+        Create an interactive plotly chart with dynamic range visualization
         """
         if self.df is None:
             print("No data available for charting")
@@ -330,7 +447,7 @@ class PullbackViewer:
                 rows=2, cols=1,
                 shared_xaxes=True,
                 vertical_spacing=0.1,
-                subplot_titles=(f'{symbol} Price with Pullback Points', 'Volume'),
+                subplot_titles=(f'{symbol} - Dynamic Range Analysis', 'Volume'),
                 row_width=[0.7, 0.3]
             )
         else:
@@ -355,110 +472,139 @@ class PullbackViewer:
         else:
             fig.add_trace(candlestick)
         
-        # Add pullback points if available
-        if self.pullbacks is not None and len(self.pullbacks) > 0:
-            # Bearish pullbacks (red dots) - positioned at bottom of candles
-            bearish = self.pullbacks[self.pullbacks['type'] == 'bearish']
-            if len(bearish) > 0:
-                # Get the corresponding candle data for positioning
-                bearish_y_positions = []
-                for idx in bearish['index']:
-                    candle = self.df.iloc[idx]
-                    # Position red dots at the low of the candle
-                    bearish_y_positions.append(candle['low'] - (candle['high'] - candle['low']) * 0.1)
-                
-                fig.add_trace(go.Scatter(
-                    x=bearish['datetime'],
-                    y=bearish_y_positions,
-                    mode='markers',
-                    marker=dict(
-                        symbol='circle',
-                        size=12,
-                        color='red',
-                        line=dict(width=2, color='darkred')
-                    ),
-                    name='Bearish Pullback',
-                    text=[f"Bearish Pullback<br>Close: ${price:.2f}<br>Prev Low: ${prev_low:.2f}" 
-                          for price, prev_low in zip(bearish['price'], bearish['previous_low'])],
-                    hovertemplate='%{text}<extra></extra>'
-                ), row=1 if show_volume else None, col=1 if show_volume else None)
-                
-                # Create step-like bearish level line
-                bearish_levels = []
-                bearish_times = []
-                current_bearish_level = None
-                
-                for i, row in self.df.iterrows():
-                    # Check if this timestamp has a bearish pullback
-                    bearish_at_time = bearish[bearish['datetime'] == row['datetime']]
-                    if len(bearish_at_time) > 0:
-                        current_bearish_level = bearish_at_time.iloc[0]['price']
-                    
-                    bearish_times.append(row['datetime'])
-                    bearish_levels.append(current_bearish_level)
-                
-                # Add the step-like bearish level line
-                if current_bearish_level is not None:
-                    fig.add_trace(go.Scatter(
-                        x=bearish_times,
-                        y=bearish_levels,
-                        mode='lines',
-                        line=dict(color='red', dash='dash', width=2),
-                        name='Bearish Level',
-                        showlegend=True,
-                        hovertemplate='Bearish Level: $%{y:.2f}<extra></extra>'
-                    ), row=1 if show_volume else None, col=1 if show_volume else None)
+        # Add structural pivots
+        if hasattr(self, 'structural_highs') and len(self.structural_highs) > 0:
+            fig.add_trace(go.Scatter(
+                x=self.structural_highs['datetime'],
+                y=self.structural_highs['price'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-down',
+                    size=10,
+                    color='orange',
+                    line=dict(width=2, color='darkorange')
+                ),
+                name='Structural High',
+                text=[f"Structural High<br>${price:.2f}" for price in self.structural_highs['price']],
+                hovertemplate='%{text}<extra></extra>'
+            ), row=1 if show_volume else None, col=1 if show_volume else None)
+        
+        if hasattr(self, 'structural_lows') and len(self.structural_lows) > 0:
+            fig.add_trace(go.Scatter(
+                x=self.structural_lows['datetime'],
+                y=self.structural_lows['price'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-up',
+                    size=10,
+                    color='purple',
+                    line=dict(width=2, color='darkviolet')
+                ),
+                name='Structural Low',
+                text=[f"Structural Low<br>${price:.2f}" for price in self.structural_lows['price']],
+                hovertemplate='%{text}<extra></extra>'
+            ), row=1 if show_volume else None, col=1 if show_volume else None)
+        
+        # Add dynamic range lines
+        if self.range_data is not None and len(self.range_data) > 0:
+            # Create step-like range high line
+            range_high_times = []
+            range_high_values = []
+            range_high_colors = []
             
-            # Bullish pullbacks (green dots) - positioned at top of candles
-            bullish = self.pullbacks[self.pullbacks['type'] == 'bullish']
-            if len(bullish) > 0:
-                # Get the corresponding candle data for positioning
-                bullish_y_positions = []
-                for idx in bullish['index']:
-                    candle = self.df.iloc[idx]
-                    # Position green dots at the high of the candle
-                    bullish_y_positions.append(candle['high'] + (candle['high'] - candle['low']) * 0.1)
+            # Create step-like range low line
+            range_low_times = []
+            range_low_values = []
+            range_low_colors = []
+            
+            for _, row in self.range_data.iterrows():
+                range_high_times.append(row['datetime'])
+                range_high_values.append(row['range_high'])
                 
+                range_low_times.append(row['datetime'])
+                range_low_values.append(row['range_low'])
+                
+                # Color based on range state
+                if row['state'] == 'bullish':
+                    range_high_colors.append('green')
+                    range_low_colors.append('green')
+                else:
+                    range_high_colors.append('red')
+                    range_low_colors.append('red')
+            
+            # Add range high line
+            if range_high_values and any(v is not None for v in range_high_values):
                 fig.add_trace(go.Scatter(
-                    x=bullish['datetime'],
-                    y=bullish_y_positions,
-                    mode='markers',
-                    marker=dict(
-                        symbol='circle',
-                        size=12,
-                        color='green',
-                        line=dict(width=2, color='darkgreen')
-                    ),
-                    name='Bullish Pullback',
-                    text=[f"Bullish Pullback<br>Close: ${price:.2f}<br>Prev High: ${prev_high:.2f}" 
-                          for price, prev_high in zip(bullish['price'], bullish['previous_high'])],
-                    hovertemplate='%{text}<extra></extra>'
+                    x=range_high_times,
+                    y=range_high_values,
+                    mode='lines',
+                    line=dict(color='blue', dash='solid', width=3),
+                    name='Dynamic Range High',
+                    showlegend=True,
+                    hovertemplate='Range High: $%{y:.2f}<extra></extra>'
                 ), row=1 if show_volume else None, col=1 if show_volume else None)
+            
+            # Add range low line
+            if range_low_values and any(v is not None for v in range_low_values):
+                fig.add_trace(go.Scatter(
+                    x=range_low_times,
+                    y=range_low_values,
+                    mode='lines',
+                    line=dict(color='red', dash='solid', width=3),
+                    name='Dynamic Range Low',
+                    showlegend=True,
+                    hovertemplate='Range Low: $%{y:.2f}<extra></extra>'
+                ), row=1 if show_volume else None, col=1 if show_volume else None)
+            
+            # Add range state indicators (optimized for performance)
+            # Instead of many rectangles, use scatter points to show state changes
+            state_changes = []
+            prev_state = None
+            
+            for _, row in self.range_data.iterrows():
+                if row['state'] != prev_state:
+                    state_changes.append({
+                        'datetime': row['datetime'],
+                        'price': row['price'],
+                        'state': row['state']
+                    })
+                    prev_state = row['state']
+            
+            if state_changes:
+                state_df = pd.DataFrame(state_changes)
+                bullish_changes = state_df[state_df['state'] == 'bullish']
+                bearish_changes = state_df[state_df['state'] == 'bearish']
                 
-                # Create step-like bullish level line
-                bullish_levels = []
-                bullish_times = []
-                current_bullish_level = None
-                
-                for i, row in self.df.iterrows():
-                    # Check if this timestamp has a bullish pullback
-                    bullish_at_time = bullish[bullish['datetime'] == row['datetime']]
-                    if len(bullish_at_time) > 0:
-                        current_bullish_level = bullish_at_time.iloc[0]['price']
-                    
-                    bullish_times.append(row['datetime'])
-                    bullish_levels.append(current_bullish_level)
-                
-                # Add the step-like bullish level line
-                if current_bullish_level is not None:
+                if len(bullish_changes) > 0:
                     fig.add_trace(go.Scatter(
-                        x=bullish_times,
-                        y=bullish_levels,
-                        mode='lines',
-                        line=dict(color='green', dash='dash', width=2),
-                        name='Bullish Level',
-                        showlegend=True,
-                        hovertemplate='Bullish Level: $%{y:.2f}<extra></extra>'
+                        x=bullish_changes['datetime'],
+                        y=bullish_changes['price'],
+                        mode='markers',
+                        marker=dict(
+                            symbol='arrow-up',
+                            size=8,
+                            color='lightgreen',
+                            line=dict(width=1, color='green')
+                        ),
+                        name='Bullish Range Start',
+                        text=[f"Bullish Range Start<br>${price:.2f}" for price in bullish_changes['price']],
+                        hovertemplate='%{text}<extra></extra>'
+                    ), row=1 if show_volume else None, col=1 if show_volume else None)
+                
+                if len(bearish_changes) > 0:
+                    fig.add_trace(go.Scatter(
+                        x=bearish_changes['datetime'],
+                        y=bearish_changes['price'],
+                        mode='markers',
+                        marker=dict(
+                            symbol='arrow-down',
+                            size=8,
+                            color='lightcoral',
+                            line=dict(width=1, color='red')
+                        ),
+                        name='Bearish Range Start',
+                        text=[f"Bearish Range Start<br>${price:.2f}" for price in bearish_changes['price']],
+                        hovertemplate='%{text}<extra></extra>'
                     ), row=1 if show_volume else None, col=1 if show_volume else None)
         
         # Add volume bars if requested
@@ -475,9 +621,8 @@ class PullbackViewer:
             ), row=2, col=1)
         
         # Update layout
-        title_suffix = " (Structure Only)" if structure_only else ""
         fig.update_layout(
-            title=f'{symbol} - Interactive Pullback Viewer{title_suffix}',
+            title=f'{symbol} - Dynamic Range-Based Analysis',
             xaxis_title='Time',
             yaxis_title='Price ($)',
             template='plotly_dark',
@@ -494,51 +639,68 @@ class PullbackViewer:
         
         return fig
     
-    def analyze_pullbacks(self):
+    def analyze_ranges(self):
         """
-        Provide analysis of identified pullbacks
+        Provide analysis of identified ranges and states
         """
-        if self.pullbacks is None or len(self.pullbacks) == 0:
-            print("No pullbacks identified")
+        if self.range_data is None or len(self.range_data) == 0:
+            print("No range data available")
             return
             
         print("\n" + "="*60)
-        print("PULLBACK ANALYSIS")
+        print("DYNAMIC RANGE ANALYSIS")
         print("="*60)
         
-        total_pullbacks = len(self.pullbacks)
-        bullish_count = len(self.pullbacks[self.pullbacks['type'] == 'bullish'])
-        bearish_count = len(self.pullbacks[self.pullbacks['type'] == 'bearish'])
+        total_periods = len(self.range_data)
+        bullish_periods = len(self.range_data[self.range_data['state'] == 'bullish'])
+        bearish_periods = len(self.range_data[self.range_data['state'] == 'bearish'])
         
-        print(f"Total Pullbacks: {total_pullbacks}")
-        print(f"Bullish Pullbacks: {bullish_count}")
-        print(f"Bearish Pullbacks: {bearish_count}")
+        print(f"Total Analysis Periods: {total_periods}")
+        print(f"Bullish Range Periods: {bullish_periods}")
+        print(f"Bearish Range Periods: {bearish_periods}")
         
-        if total_pullbacks > 0:
-            print(f"Bullish Ratio: {bullish_count/total_pullbacks:.1%}")
-            print(f"Bearish Ratio: {bearish_count/total_pullbacks:.1%}")
+        if total_periods > 0:
+            print(f"Bullish Time Ratio: {bullish_periods/total_periods:.1%}")
+            print(f"Bearish Time Ratio: {bearish_periods/total_periods:.1%}")
         
-        print("\nRecent Pullbacks:")
+        # Show current range state
+        if len(self.range_data) > 0:
+            current_state = self.range_data.iloc[-1]
+            print(f"\nCurrent Range State: {current_state['state'].upper()}")
+            if current_state['range_high'] is not None:
+                print(f"Current Range High: ${current_state['range_high']:.2f}")
+            if current_state['range_low'] is not None:
+                print(f"Current Range Low: ${current_state['range_low']:.2f}")
+        
+        # Show structural pivots
+        if hasattr(self, 'structural_highs') and len(self.structural_highs) > 0:
+            print(f"\nStructural Highs Found: {len(self.structural_highs)}")
+        if hasattr(self, 'structural_lows') and len(self.structural_lows) > 0:
+            print(f"Structural Lows Found: {len(self.structural_lows)}")
+        
+        print("\nRecent Range States:")
         print("-" * 40)
         
-        # Show last 5 pullbacks
-        recent = self.pullbacks.tail(5)
-        for _, pullback in recent.iterrows():
-            pb_type = pullback['type'].upper()
-            price = pullback['price']
-            time = pullback['datetime'].strftime('%Y-%m-%d %H:%M')
-            print(f"{time} | {pb_type:8} | ${price:.2f}")
+        # Show last 5 range changes
+        recent = self.range_data.tail(5)
+        for _, state in recent.iterrows():
+            state_type = state['state'].upper()
+            price = state['price']
+            time = state['datetime'].strftime('%Y-%m-%d %H:%M')
+            range_high = f"${state['range_high']:.2f}" if state['range_high'] else "N/A"
+            range_low = f"${state['range_low']:.2f}" if state['range_low'] else "N/A"
+            print(f"{time} | {state_type:8} | Price: ${price:.2f} | High: {range_high} | Low: {range_low}")
 
 def main():
     """Main function"""
     parser = argparse.ArgumentParser(
-        description="Interactive Pullback Viewer - Identify valid pullback points",
+        description="Dynamic Range-Based Market Analysis - Advanced range tracking with structural pivots",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python3 pullback_viewer_interactive.py AAPL
   python3 pullback_viewer_interactive.py NVDA --days 7 --frequency 1
-  python3 pullback_viewer_interactive.py TSLA --structure-only --no-volume
+  python3 pullback_viewer_interactive.py TSLA --lookback 5 --no-volume
         """
     )
     
@@ -546,44 +708,43 @@ Examples:
     parser.add_argument('--days', type=int, default=7, help='Number of days of data (default: 7)')
     parser.add_argument('--frequency', type=int, default=5, choices=[1, 5, 15, 30, 60], 
                        help='Frequency in minutes (default: 5)')
-    parser.add_argument('--structure-only', action='store_true', 
-                       help='Show only structural pullbacks (last of each type)')
+    parser.add_argument('--lookback', type=int, default=3, 
+                       help='Lookback period for structural pivot identification (default: 3)')
     parser.add_argument('--no-volume', action='store_true', help='Hide volume chart')
     parser.add_argument('--force-refresh', action='store_true', 
                        help='Force refresh authentication tokens')
     
     args = parser.parse_args()
     
-    # Initialize viewer
-    viewer = PullbackViewer()
+    # Initialize analyzer
+    analyzer = RangeBasedAnalyzer()
     
     print("="*60)
-    print("INTERACTIVE PULLBACK VIEWER")
+    print("DYNAMIC RANGE-BASED MARKET ANALYZER")
     print("="*60)
     print(f"Symbol: {args.symbol.upper()}")
     print(f"Period: {args.days} days")
     print(f"Frequency: {args.frequency} minutes")
-    print(f"Structure Only: {args.structure_only}")
+    print(f"Structural Pivot Lookback: {args.lookback}")
     print(f"Force Refresh: {args.force_refresh}")
     print("="*60)
     
     # Fetch data
-    if not viewer.fetch_data(args.symbol.upper(), args.days, args.frequency, args.force_refresh):
+    if not analyzer.fetch_data(args.symbol.upper(), args.days, args.frequency, args.force_refresh):
         print("Failed to fetch data. Exiting.")
         return
     
-    # Identify pullbacks
-    pullbacks = viewer.identify_pullbacks(structure_only=args.structure_only)
+    # Analyze dynamic ranges
+    range_data = analyzer.analyze_dynamic_ranges(lookback=args.lookback)
     
-    # Analyze pullbacks
-    viewer.analyze_pullbacks()
+    # Analyze ranges
+    analyzer.analyze_ranges()
     
     # Create and show interactive chart
     print("\nGenerating interactive chart...")
-    fig = viewer.create_interactive_chart(
+    fig = analyzer.create_interactive_chart(
         args.symbol.upper(), 
-        show_volume=not args.no_volume,
-        structure_only=args.structure_only
+        show_volume=not args.no_volume
     )
     
     if fig:
@@ -595,7 +756,7 @@ Examples:
         os.makedirs(output_dir, exist_ok=True)
         
         # Save as HTML file in examples directory
-        filename = f"{args.symbol.upper()}_pullback_viewer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        filename = f"{args.symbol.upper()}_range_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         filepath = os.path.join(output_dir, filename)
         fig.write_html(filepath)
         print(f"Chart saved as: {filepath}")
