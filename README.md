@@ -136,9 +136,31 @@ if close < self.bos_low[bar]:
 - **Dynamic Updates**: Real-time stage classification as new data arrives
 - **Historical Context**: Maintains last 8 MB points for analysis
 
-## ThinkScript Version
+## Platform Versions
 
-For ThinkorSwim users, a legacy ThinkScript version is available (`pullback_viewer.tos`) that provides basic pullback identification logic.
+### PineScript Version (TradingView)
+
+For TradingView users, a complete PineScript v6 implementation is available (`market_structure_analyzer.pine`) that provides the full Market Structure Analyzer functionality.
+
+#### Installation in TradingView:
+1. **Download** the `market_structure_analyzer.pine` file from the repository
+2. **Open TradingView** and go to Pine Editor
+3. **Copy and paste** the PineScript code into the editor
+4. **Click "Add to Chart"** to apply the indicator
+5. **Configure** line width and color in the indicator settings
+
+#### Features:
+- **Complete BOS Logic**: Full implementation matching the Python version
+- **2000-Candle Wave Analysis**: Complete wave validation for market breaks
+- **Market Stage Display**: Real-time market stage table in top-right corner
+- **Step-line Visualization**: Perfect step-line BOS High/Low tracking
+- **Configurable Parameters**: Adjustable line width (-10 to 10) and color
+- **Market Stage Classification**: Accumulation, Distribution, Reaccumulation, Redistribution, Neutral
+- **Visual Market Stage Table**: Color-coded stage indicator (green for bullish, red for bearish)
+
+### ThinkScript Version (ThinkorSwim)
+
+For ThinkorSwim users, a ThinkScript version is available (`pullback_viewer.tos`) that provides Market Structure Analysis with some limitations due to platform constraints.
 
 ### Installation in ThinkorSwim:
 1. **Download** the `pullback_viewer.tos` file from the repository
@@ -186,7 +208,8 @@ The interactive chart includes:
 pullback-viewer/
 ├── README.md                           # This documentation
 ├── pullback_viewer_interactive.py     # Main Python script (MarketStructureAnalyzer)
-├── pullback_viewer.tos                # Legacy ThinkScript version
+├── market_structure_analyzer.pine     # PineScript version for TradingView
+├── pullback_viewer.tos                # ThinkScript version for ThinkorSwim
 ├── examples/                          # Interactive chart examples
 │   └── AAPL_market_structure_*.html  # Current market structure charts
 ├── cs_tokens.json                    # API authentication tokens
