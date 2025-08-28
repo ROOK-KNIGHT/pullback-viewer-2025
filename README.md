@@ -1,23 +1,36 @@
-# Interactive Pullback Viewer
+# Market Structure Analyzer
 
-Based on TradingView's Pullback Viewer by emka, this interactive chart identifies valid pullback points in trending markets using live data from your Schwab API handlers.
+Based on TradingView's Trading Desk indicator, this interactive chart identifies market stages based on breaks of structure (BOS). It determines Accumulation, Distribution, Reaccumulation, Redistribution, or Neutral market stages using sophisticated wave analysis.
 
 ## Features
 
-- **Real-time data fetching** using existing Schwab API handlers
+- **Real-time data fetching** using Schwab API integration
 - **Interactive plotly charts** with zoom, pan, and hover functionality
-- **Pullback identification** for both bullish and bearish trends
-- **Configurable parameters** for different timeframes and analysis types
+- **Market structure analysis** with BOS High/Low tracking
+- **Market Break (MB) identification** with bullish/bearish dots
+- **Market stage classification** (Accumulation, Distribution, etc.)
+- **Step-line visualization** matching TradingView behavior
+- **Wave analysis** with up to 2000-candle lookback validation
 - **Volume analysis** with optional volume subplot
-- **Structure-only mode** to show only the most recent pullbacks of each type
+- **Configurable parameters** for different timeframes
 
-## What is a Valid Pullback?
+## What is Market Structure Analysis?
 
-According to the TradingView indicator:
+The Market Structure Analyzer implements sophisticated Break of Structure (BOS) logic:
 
-- **Bearish Pullback**: Current candle body closes above the previous candle's high (bullish candle breaking above resistance)
-- **Bullish Pullback**: Current candle body closes below the previous candle's low (bearish candle breaking below support)
-- Must be a **clean body close**, not just a wick touching the level
+- **BOS High/Low Tracking**: Dynamic high and low levels that update based on market breaks
+- **Market Breaks (MB)**: Validated breaks of structure with wave analysis confirmation
+- **Market Stages**: Classification into Accumulation, Distribution, Reaccumulation, Redistribution, or Neutral
+- **Wave Validation**: Up to 2000-candle lookback to confirm valid market breaks
+- **Step-line Visualization**: Clean step-line representation of BOS levels
+
+## Market Stages Explained
+
+- **Accumulation**: Bullish market bias with upward momentum
+- **Distribution**: Bearish market bias with downward momentum  
+- **Reaccumulation**: Continuation of bullish trend after consolidation
+- **Redistribution**: Continuation of bearish trend after consolidation
+- **Neutral**: No clear directional bias
 
 ## Usage
 
@@ -28,17 +41,17 @@ python3 pullback_viewer_interactive.py AAPL
 
 ### Advanced Options
 ```bash
-# 7 days of 1-minute data
-python3 pullback_viewer_interactive.py NVDA --days 7 --frequency 1
+# 1 day of 1-minute data (high frequency analysis)
+python3 pullback_viewer_interactive.py NVDA --days 1 --frequency 1
 
-# Structure-only mode (shows only most recent pullbacks)
-python3 pullback_viewer_interactive.py TSLA --structure-only
+# 7 days of 5-minute data
+python3 pullback_viewer_interactive.py TSLA --days 7 --frequency 5
 
-# Hide volume chart
-python3 pullback_viewer_interactive.py MSFT --no-volume
+# Hide volume chart with custom line styling
+python3 pullback_viewer_interactive.py MSFT --no-volume --line-width 2 --line-color red
 
-# Combine options
-python3 pullback_viewer_interactive.py GOOGL --days 5 --frequency 15 --structure-only --no-volume
+# Force token refresh
+python3 pullback_viewer_interactive.py GOOGL --force-refresh
 ```
 
 ### Command Line Options
@@ -46,48 +59,86 @@ python3 pullback_viewer_interactive.py GOOGL --days 5 --frequency 15 --structure
 - `symbol`: Stock symbol (required)
 - `--days`: Number of days of data (default: 7)
 - `--frequency`: Frequency in minutes - choices: 1, 5, 15, 30, 60 (default: 5)
-- `--structure-only`: Show only structural pullbacks (last of each type)
 - `--no-volume`: Hide volume chart
+- `--force-refresh`: Force refresh authentication tokens
+- `--line-width`: Width of BOS lines (default: 1)
+- `--line-color`: Color of BOS lines (default: blue)
 
 ## Output
 
 The script provides:
 
 1. **Console Analysis**: 
-   - Total pullback count
-   - Bullish vs bearish ratio
-   - Recent pullback details
+   - Current market stage
+   - Stage distribution across timeframe
+   - Market Break (MB) point count
+   - Data processing statistics
 
 2. **Interactive Chart**: 
-   - Candlestick price chart
-   - Red dots (●) for bearish pullbacks
-   - Green dots (●) for bullish pullbacks
+   - Candlestick price chart with BOS step-lines
+   - Green dots (●) for bullish MB points
+   - Red dots (●) for bearish MB points
+   - Market stage indicator badge
    - Volume bars (optional)
-   - Hover tooltips with details
+   - Hover tooltips with detailed information
 
 3. **HTML File**: 
    - Saved automatically with timestamp
+   - Format: `{SYMBOL}_market_structure_{YYYYMMDD_HHMMSS}.html`
    - Can be shared or viewed later
 
-## Examples
+## Example Output
 
-### Regular Mode
-Shows all pullback points identified in the data:
-```bash
-python3 pullback_viewer_interactive.py AAPL --days 3 --frequency 5
+### Console Analysis
 ```
-Output: `Identified 76 pullback points`
+============================================================
+MARKET STRUCTURE ANALYZER
+============================================================
+Symbol: AAPL
+Period: 1 days
+Frequency: 1 minutes
+============================================================
+Successfully loaded 780 candles for AAPL
+Identified 45 MB points
+Market stages computed
 
-### Structure-Only Mode
-Shows only the most recent pullback of each type:
-```bash
-python3 pullback_viewer_interactive.py NVDA --days 2 --frequency 15 --structure-only
+============================================================
+MARKET STAGE ANALYSIS
+============================================================
+Current Market Stage: Accumulation
+
+Stage Distribution:
+Neutral: 16 bars
+Accumulation: 490 bars (62.8%)
+Distribution: 274 bars (35.1%)
 ```
-Output: `Identified 2 pullback points`
+
+## Algorithm Details
+
+### BOS Logic Implementation
+```python
+# Bullish MB: When close > BOS High
+if close > self.bos_high[bar-1]:
+    self.bos_high[bar] = high  # Use actual high
+    self.bos_low[bar] = low    # Use actual low
+    # Wave analysis validation...
+    
+# Bearish MB: When close < BOS Low  
+if close < self.bos_low[bar]:
+    self.bos_low[bar] = low    # Use actual low
+    self.bos_high[bar] = high  # Use actual high
+    # Wave analysis validation...
+```
+
+### Market Stage Classification
+- **Sequence Tracking**: Monitors bullish/bearish MB sequences
+- **Threshold Logic**: Uses sequence counts to determine stages
+- **Dynamic Updates**: Real-time stage classification as new data arrives
+- **Historical Context**: Maintains last 8 MB points for analysis
 
 ## ThinkScript Version
 
-For ThinkorSwim users, a ThinkScript version is available (`pullback_viewer.tos`) that provides the same pullback identification logic directly in your ThinkorSwim charts.
+For ThinkorSwim users, a legacy ThinkScript version is available (`pullback_viewer.tos`) that provides basic pullback identification logic.
 
 ### Installation in ThinkorSwim:
 1. **Download** the `pullback_viewer.tos` file from the repository
@@ -96,30 +147,16 @@ For ThinkorSwim users, a ThinkScript version is available (`pullback_viewer.tos`
 4. **Select** the downloaded `.tos` file
 5. **Apply** the study to your chart
 
-### Features:
-- **Green dots** above candles for bullish pullbacks
-- **Red dots** below candles for bearish pullbacks
-- **Same logic** as the Python version: clean body closes outside previous candle range
-- **Optional chart bubbles** (uncomment the AddChartBubble lines for labels)
-- **Customizable** colors and positioning
-
-### ThinkScript Logic:
-```thinkscript
-# Bullish pullback: current close > previous high AND bullish candle
-def bullishPB = c > h[1] and c > o;
-
-# Bearish pullback: current close < previous low AND bearish candle  
-def bearishPB = c < l[1] and c < o;
-```
-
 ## Use Cases
 
-As mentioned in the original TradingView indicator, pullbacks can be used to:
+Market Structure Analysis can be used to:
 
-- **Identify supply and demand zones**
-- **Spot key levels for support and resistance**
-- **Use as anchor points for trendlines**
-- **Find potential reaction points in trending markets**
+- **Identify market bias** and directional momentum
+- **Spot key structural levels** for support and resistance
+- **Time entries and exits** based on market stage transitions
+- **Understand market context** for trading decisions
+- **Validate breakouts** with proper wave analysis
+- **Track institutional accumulation/distribution** patterns
 
 ## Requirements
 
@@ -134,11 +171,13 @@ The script automatically handles token refresh. If you get authentication errors
 ## Chart Features
 
 The interactive chart includes:
-- **Zoom and Pan**: Mouse wheel and drag
-- **Hover Details**: Price and pullback information
+- **Zoom and Pan**: Mouse wheel and drag functionality
+- **Hover Details**: Price, MB points, and market stage information
 - **Legend Toggle**: Click to show/hide data series
 - **Dark Theme**: Professional trading interface
-- **Time Navigation**: Click and drag on time axis
+- **Step-line BOS Levels**: Clean visualization matching TradingView
+- **MB Point Markers**: Clear bullish (green) and bearish (red) indicators
+- **Market Stage Badge**: Real-time stage display
 - **Volume Correlation**: Optional volume bars with price-matched colors
 
 ## Repository Structure
@@ -146,27 +185,20 @@ The interactive chart includes:
 ```
 pullback-viewer/
 ├── README.md                           # This documentation
-├── pullback_viewer_interactive.py     # Main Python script
-├── pullback_viewer.tos                # ThinkScript version for ThinkorSwim
+├── pullback_viewer_interactive.py     # Main Python script (MarketStructureAnalyzer)
+├── pullback_viewer.tos                # Legacy ThinkScript version
 ├── examples/                          # Interactive chart examples
-│   ├── AAPL_pullback_viewer_*.html   # Apple charts (multiple versions)
-│   ├── NVDA_pullback_viewer_*.html   # NVIDIA chart (structure-only)
-│   ├── MSFT_pullback_viewer_*.html   # Microsoft chart (15min frequency)
-│   ├── GOOGL_pullback_viewer_*.html  # Google chart (5min frequency)
-│   ├── SPY_pullback_viewer_*.html    # S&P 500 ETF charts (multiple versions)
-│   ├── QQQ_pullback_viewer_*.html    # NASDAQ ETF (structure-only)
-│   └── AMD_pullback_viewer_*.html    # AMD chart (15min, no-volume)
-├── charts/                            # Legacy chart directory
-├── docs/                             # Additional documentation
-└── cs_tokens.json                    # API authentication tokens
+│   └── AAPL_market_structure_*.html  # Current market structure charts
+├── cs_tokens.json                    # API authentication tokens
+└── KEYS.json                         # API credentials (external)
 ```
 
 ## Files Generated
 
 Each run creates an HTML file with format:
-`{SYMBOL}_pullback_viewer_{YYYYMMDD_HHMMSS}.html`
+`{SYMBOL}_market_structure_{YYYYMMDD_HHMMSS}.html`
 
-Example: `AAPL_pullback_viewer_20250826_210331.html`
+Example: `AAPL_market_structure_20250827_223554.html`
 
 All generated charts are automatically saved to the `examples/` directory.
 
@@ -177,19 +209,13 @@ All generated charts are automatically saved to the `examples/` directory.
 If you want to view the pre-generated charts without running the Python script:
 
 1. **Go to the GitHub repository**: [pullback-viewer-2025](https://github.com/ROOK-KNIGHT/pullback-viewer-2025)
-2. **Click on any HTML file** (e.g., `NVDA_pullback_viewer_20250826_210913.html`)
+2. **Click on any HTML file** in the examples directory
 3. **Click the "Download raw file" button** (download icon in the top-right of the file view)
 4. **Save the file** to your computer
 5. **Double-click the downloaded HTML file** to open it in your browser
 
 **Available Charts:**
-- 📱 **AAPL**: Apple Inc. pullback analysis (multiple timeframes available)
-- 🎮 **NVDA**: NVIDIA Corporation (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
-- 💻 **MSFT**: Microsoft Corporation (2 days, 15min - 25 pullbacks, 28% bullish, 72% bearish)
-- 🔍 **GOOGL**: Google/Alphabet (3 days, 5min - 76 pullbacks, 51.3% bullish, 48.7% bearish)
-- 📊 **SPY**: S&P 500 ETF (1 day, 5min - 38 pullbacks, 60.5% bullish, 39.5% bearish)
-- 🏛️ **QQQ**: NASDAQ ETF (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
-- 🔥 **AMD**: Advanced Micro Devices (1 day, 15min, no-volume - 12 pullbacks, 66.7% bullish, 33.3% bearish)
+- 📱 **AAPL**: Apple Inc. market structure analysis with BOS levels and MB points
 
 ### 🖥️ Open Local HTML Charts
 
@@ -201,13 +227,13 @@ Simply double-click on any generated HTML file to open it in your default web br
 #### Method 2: Command Line
 ```bash
 # Open specific chart
-open AAPL_pullback_viewer_20250826_210331.html
+open AAPL_market_structure_20250827_223554.html
 
 # On Windows
-start AAPL_pullback_viewer_20250826_210331.html
+start AAPL_market_structure_20250827_223554.html
 
 # On Linux
-xdg-open AAPL_pullback_viewer_20250826_210331.html
+xdg-open AAPL_market_structure_20250827_223554.html
 ```
 
 #### Method 3: From Browser
@@ -223,7 +249,28 @@ Drag the HTML file directly into any open browser window or tab.
 Once opened, you can:
 - **Zoom**: Mouse wheel or click-drag to select area
 - **Pan**: Click and drag to move around
-- **Hover**: Mouse over points for detailed information
-- **Toggle**: Click legend items to show/hide data series
+- **Hover**: Mouse over points for detailed MB information
+- **Toggle**: Click legend items to show/hide BOS lines, MB points, etc.
 - **Reset**: Double-click to reset zoom
+- **Analyze**: Observe market stage transitions and BOS level behavior
 - **Download**: Use browser's save/print functions to export
+
+## Technical Implementation
+
+### Key Classes
+- **MarketStructureAnalyzer**: Main analysis engine
+- **StandaloneDataHandler**: Schwab API integration
+- **Wave Analysis**: 2000-candle lookback validation
+- **Step-line Visualization**: TradingView-matching behavior
+
+### Performance Optimizations
+- Efficient wave analysis algorithms
+- Optimized for high-frequency 1-minute data
+- Memory-efficient BOS level tracking
+- Fast MB point identification and validation
+
+### Data Processing
+- Real-time Schwab API data fetching
+- Automatic token refresh handling
+- Robust error handling and validation
+- Support for multiple timeframes (1m, 5m, 15m, 30m, 60m)
