@@ -1,73 +1,23 @@
-# Dynamic Range-Based Market Analysis Viewer
+# Interactive Pullback Viewer
 
-Advanced implementation with dynamic bullish/bearish range tracking, structural pivot identification, and sophisticated high/low updating rules.
+Based on TradingView's Pullback Viewer by emka, this interactive chart identifies valid pullback points in trending markets using live data from your Schwab API handlers.
 
-## Overview
+## Features
 
-This tool implements a complex range-based algorithm that goes far beyond simple pullback identification. It creates a sophisticated dynamic range tracking system with intelligent state management and conservative body-based validation.
+- **Real-time data fetching** using existing Schwab API handlers
+- **Interactive plotly charts** with zoom, pan, and hover functionality
+- **Pullback identification** for both bullish and bearish trends
+- **Configurable parameters** for different timeframes and analysis types
+- **Volume analysis** with optional volume subplot
+- **Structure-only mode** to show only the most recent pullbacks of each type
 
-## Key Features
+## What is a Valid Pullback?
 
-### 🎯 Dynamic Range State Management
-- **Bullish/Bearish Range Assignment**: Market momentum assessment assigns persistent range states
-- **State Persistence**: Ranges continue until broken by significant directional moves
-- **Body-Based Validation**: Uses candle bodies (not wicks) for conservative sentiment analysis
+According to the TradingView indicator:
 
-### 📊 Structural Pivot Identification
-- **Confirmed Highs/Lows**: Identifies pivots with confirmation on both sides
-- **Configurable Lookback**: Adjustable confirmation period (default: 3 candles)
-- **Visual Markers**: Orange triangles for structural highs, purple for structural lows
-
-### 🔄 Dynamic High/Low Tracking
-- **Intelligent Updates**: Range highs/lows update only under specific conditions
-- **Last Major Movement Logic**: Tracks "sell before buy" and "buy before sell" patterns
-- **Conservative Approach**: Body-based validation prevents false signals
-
-### 📈 Advanced Visualization
-- **Dynamic Range Lines**: Blue line for range highs, red line for range lows
-- **State Change Indicators**: Arrows showing bullish/bearish range transitions
-- **Structural Pivots**: Clear marking of confirmed pivot points
-- **Performance Optimized**: Handles high-frequency data efficiently
-
-## Algorithm Details
-
-### Range State Logic
-
-**Bullish Range Assignment:**
-- Triggered when candle body closes above previous candle high
-- Continues updating high until body exceeds current high
-- Low determined by finding lowest point after last "sell before buy"
-- Range persists until bearish break occurs
-
-**Bearish Range Assignment:**
-- Triggered when candle body closes below previous candle low  
-- Continues updating low until body goes below current low
-- High determined by finding highest point after last "buy before sell"
-- Range persists until bullish break occurs
-
-### High/Low Update Rules
-
-**In Bullish Ranges:**
-- High updates only when candle body (open or close) exceeds current high
-- When high updates, low recalculates based on last major sell signal
-- Provides dynamic support/resistance levels
-
-**In Bearish Ranges:**
-- Low updates only when candle body (open or close) goes below current low
-- When low updates, high recalculates based on last major buy signal
-- Maintains relevant range boundaries
-
-### Structural Pivot Detection
-
-**Structural High:**
-- Higher than all surrounding highs within lookback period
-- Confirmed on both left and right sides
-- Represents significant resistance levels
-
-**Structural Low:**
-- Lower than all surrounding lows within lookback period
-- Confirmed on both left and right sides
-- Represents significant support levels
+- **Bearish Pullback**: Current candle body closes above the previous candle's high (bullish candle breaking above resistance)
+- **Bullish Pullback**: Current candle body closes below the previous candle's low (bearish candle breaking below support)
+- Must be a **clean body close**, not just a wick touching the level
 
 ## Usage
 
@@ -78,155 +28,202 @@ python3 pullback_viewer_interactive.py AAPL
 
 ### Advanced Options
 ```bash
-# High-frequency analysis
-python3 pullback_viewer_interactive.py AAPL --days 1 --frequency 1
+# 7 days of 1-minute data
+python3 pullback_viewer_interactive.py NVDA --days 7 --frequency 1
 
-# Custom structural pivot detection
-python3 pullback_viewer_interactive.py NVDA --lookback 5
+# Structure-only mode (shows only most recent pullbacks)
+python3 pullback_viewer_interactive.py TSLA --structure-only
 
-# Without volume chart for cleaner view
-python3 pullback_viewer_interactive.py TSLA --no-volume
+# Hide volume chart
+python3 pullback_viewer_interactive.py MSFT --no-volume
 
-# Force token refresh
-python3 pullback_viewer_interactive.py MSFT --force-refresh
+# Combine options
+python3 pullback_viewer_interactive.py GOOGL --days 5 --frequency 15 --structure-only --no-volume
 ```
 
-### Command Line Arguments
+### Command Line Options
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `symbol` | Stock symbol (required) | - |
-| `--days` | Number of days of data | 7 |
-| `--frequency` | Frequency in minutes (1,5,15,30,60) | 5 |
-| `--lookback` | Structural pivot confirmation period | 3 |
-| `--no-volume` | Hide volume chart | False |
-| `--force-refresh` | Force refresh authentication tokens | False |
+- `symbol`: Stock symbol (required)
+- `--days`: Number of days of data (default: 7)
+- `--frequency`: Frequency in minutes - choices: 1, 5, 15, 30, 60 (default: 5)
+- `--structure-only`: Show only structural pullbacks (last of each type)
+- `--no-volume`: Hide volume chart
 
-## Example Results
+## Output
 
-### AAPL 1-Day 1-Minute Analysis
-- **Total Analysis Periods**: 779
-- **Bullish Range Periods**: 531 (68.2%)
-- **Bearish Range Periods**: 230 (29.5%)
-- **Structural Highs Found**: 64
-- **Structural Lows Found**: 57
-- **Current Range State**: BULLISH
-- **Current Range High**: $230.90
-- **Current Range Low**: $230.45
+The script provides:
 
-## Chart Elements
+1. **Console Analysis**: 
+   - Total pullback count
+   - Bullish vs bearish ratio
+   - Recent pullback details
 
-### Visual Components
-- **Candlestick Chart**: Standard OHLC price data
-- **Dynamic Range High**: Blue solid line tracking range resistance
-- **Dynamic Range Low**: Red solid line tracking range support
-- **Structural Highs**: Orange downward triangles
-- **Structural Lows**: Purple upward triangles
-- **Bullish Range Start**: Green upward arrows
-- **Bearish Range Start**: Red downward arrows
-- **Volume**: Optional volume bars (green/red)
+2. **Interactive Chart**: 
+   - Candlestick price chart
+   - Red dots (●) for bearish pullbacks
+   - Green dots (●) for bullish pullbacks
+   - Volume bars (optional)
+   - Hover tooltips with details
 
-### Interactive Features
-- **Zoom & Pan**: Full chart navigation
-- **Hover Details**: Detailed information on hover
-- **Legend Toggle**: Show/hide specific elements
-- **Time Navigation**: Precise time-based analysis
+3. **HTML File**: 
+   - Saved automatically with timestamp
+   - Can be shared or viewed later
 
-## Technical Implementation
+## Examples
 
-### Core Classes
-- **`RangeBasedAnalyzer`**: Main analysis engine
-- **`StandaloneDataHandler`**: Schwab API integration
-- **Dynamic State Tracking**: Real-time range management
-- **Structural Analysis**: Pivot identification system
-
-### Performance Optimizations
-- **Efficient Visualization**: Optimized for high-frequency data
-- **State Change Detection**: Minimal computational overhead
-- **Memory Management**: Handles large datasets efficiently
-
-## File Structure
-
-```
-pullback-viewer/
-├── pullback_viewer_interactive.py    # Main analysis script
-├── pullback_viewer.tos              # ThinkScript version
-├── README.md                        # This documentation
-├── examples/                        # Generated chart files
-│   ├── AAPL_range_analysis_*.html
-│   └── [other generated charts]
-└── cs_tokens.json                   # API tokens (auto-generated)
-```
-
-## Requirements
-
-### Python Dependencies
-- pandas
-- plotly
-- requests
-- numpy
-- argparse
-
-### API Requirements
-- Schwab API credentials
-- Valid authentication tokens
-- Market data access
-
-### Installation
+### Regular Mode
+Shows all pullback points identified in the data:
 ```bash
-pip install pandas plotly requests numpy
+python3 pullback_viewer_interactive.py AAPL --days 3 --frequency 5
 ```
+Output: `Identified 76 pullback points`
 
-## Advanced Features
+### Structure-Only Mode
+Shows only the most recent pullback of each type:
+```bash
+python3 pullback_viewer_interactive.py NVDA --days 2 --frequency 15 --structure-only
+```
+Output: `Identified 2 pullback points`
 
-### Body-Based Validation
-Unlike traditional technical analysis that uses wicks, this implementation focuses on candle bodies for more conservative and accurate sentiment analysis.
+## ThinkScript Version
 
-### Dynamic Range Recalculation
-Ranges aren't static - they dynamically adjust based on market behavior, providing always-current support and resistance levels.
+For ThinkorSwim users, a ThinkScript version is available (`pullback_viewer.tos`) that provides the same pullback identification logic directly in your ThinkorSwim charts.
 
-### Momentum Assessment
-The algorithm assesses market momentum to assign range states, ensuring alignment with actual market direction.
+### Installation in ThinkorSwim:
+1. **Download** the `pullback_viewer.tos` file from the repository
+2. **Open ThinkorSwim** and go to Charts
+3. **Click Studies** → **Edit Studies** → **Import**
+4. **Select** the downloaded `.tos` file
+5. **Apply** the study to your chart
 
-### Conservative Approach
-By requiring body-based validation and confirmed structural pivots, the system reduces false signals and provides more reliable analysis.
+### Features:
+- **Green dots** above candles for bullish pullbacks
+- **Red dots** below candles for bearish pullbacks
+- **Same logic** as the Python version: clean body closes outside previous candle range
+- **Optional chart bubbles** (uncomment the AddChartBubble lines for labels)
+- **Customizable** colors and positioning
 
-## Comparison with Simple Pullback Analysis
+### ThinkScript Logic:
+```thinkscript
+# Bullish pullback: current close > previous high AND bullish candle
+def bullishPB = c > h[1] and c > o;
 
-| Feature | Simple Pullbacks | Dynamic Range Analysis |
-|---------|------------------|----------------------|
-| State Management | None | Bullish/Bearish ranges |
-| High/Low Logic | Static points | Dynamic updating rules |
-| Validation | Wick-based | Body-based conservative |
-| Structural Analysis | Basic | Confirmed pivots |
-| Range Tracking | None | Continuous range management |
-| Market Context | Limited | Full momentum assessment |
+# Bearish pullback: current close < previous low AND bearish candle  
+def bearishPB = c < l[1] and c < o;
+```
 
 ## Use Cases
 
-### Day Trading
-- Identify current range state for directional bias
-- Use dynamic support/resistance for entries/exits
-- Monitor structural pivots for key levels
+As mentioned in the original TradingView indicator, pullbacks can be used to:
 
-### Swing Trading
-- Assess longer-term range states
-- Identify range breakouts and continuations
-- Use structural pivots for position sizing
+- **Identify supply and demand zones**
+- **Spot key levels for support and resistance**
+- **Use as anchor points for trendlines**
+- **Find potential reaction points in trending markets**
 
-### Market Analysis
-- Understand market structure and momentum
-- Identify key support/resistance zones
-- Analyze range-bound vs trending behavior
+## Requirements
 
-## Future Enhancements
+- Valid Schwab API tokens (automatically refreshed)
+- Python packages: plotly, pandas, numpy, requests
+- API keys configured in `/Users/isaac/Desktop/Projects/CS_KEYS/KEYS.json`
 
-- Multi-timeframe analysis
-- Alert system for range state changes
-- Statistical analysis of range performance
-- Integration with additional data sources
-- Machine learning pattern recognition
+## Authentication
 
----
+The script automatically handles token refresh. If you get authentication errors, ensure your Schwab API credentials are properly configured and you have valid refresh tokens.
 
-*This implementation represents a significant advancement over traditional pullback analysis, providing sophisticated range-based market structure analysis with dynamic state management and conservative validation.*
+## Chart Features
+
+The interactive chart includes:
+- **Zoom and Pan**: Mouse wheel and drag
+- **Hover Details**: Price and pullback information
+- **Legend Toggle**: Click to show/hide data series
+- **Dark Theme**: Professional trading interface
+- **Time Navigation**: Click and drag on time axis
+- **Volume Correlation**: Optional volume bars with price-matched colors
+
+## Repository Structure
+
+```
+pullback-viewer/
+├── README.md                           # This documentation
+├── pullback_viewer_interactive.py     # Main Python script
+├── pullback_viewer.tos                # ThinkScript version for ThinkorSwim
+├── examples/                          # Interactive chart examples
+│   ├── AAPL_pullback_viewer_*.html   # Apple charts (multiple versions)
+│   ├── NVDA_pullback_viewer_*.html   # NVIDIA chart (structure-only)
+│   ├── MSFT_pullback_viewer_*.html   # Microsoft chart (15min frequency)
+│   ├── GOOGL_pullback_viewer_*.html  # Google chart (5min frequency)
+│   ├── SPY_pullback_viewer_*.html    # S&P 500 ETF charts (multiple versions)
+│   ├── QQQ_pullback_viewer_*.html    # NASDAQ ETF (structure-only)
+│   └── AMD_pullback_viewer_*.html    # AMD chart (15min, no-volume)
+├── charts/                            # Legacy chart directory
+├── docs/                             # Additional documentation
+└── cs_tokens.json                    # API authentication tokens
+```
+
+## Files Generated
+
+Each run creates an HTML file with format:
+`{SYMBOL}_pullback_viewer_{YYYYMMDD_HHMMSS}.html`
+
+Example: `AAPL_pullback_viewer_20250826_210331.html`
+
+All generated charts are automatically saved to the `examples/` directory.
+
+## How to View Interactive Charts
+
+### 📥 Download Charts from GitHub (Recommended for Viewers)
+
+If you want to view the pre-generated charts without running the Python script:
+
+1. **Go to the GitHub repository**: [pullback-viewer-2025](https://github.com/ROOK-KNIGHT/pullback-viewer-2025)
+2. **Click on any HTML file** (e.g., `NVDA_pullback_viewer_20250826_210913.html`)
+3. **Click the "Download raw file" button** (download icon in the top-right of the file view)
+4. **Save the file** to your computer
+5. **Double-click the downloaded HTML file** to open it in your browser
+
+**Available Charts:**
+- 📱 **AAPL**: Apple Inc. pullback analysis (multiple timeframes available)
+- 🎮 **NVDA**: NVIDIA Corporation (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
+- 💻 **MSFT**: Microsoft Corporation (2 days, 15min - 25 pullbacks, 28% bullish, 72% bearish)
+- 🔍 **GOOGL**: Google/Alphabet (3 days, 5min - 76 pullbacks, 51.3% bullish, 48.7% bearish)
+- 📊 **SPY**: S&P 500 ETF (1 day, 5min - 38 pullbacks, 60.5% bullish, 39.5% bearish)
+- 🏛️ **QQQ**: NASDAQ ETF (2 days, 15min, structure-only - 2 pullbacks, 50/50 split)
+- 🔥 **AMD**: Advanced Micro Devices (1 day, 15min, no-volume - 12 pullbacks, 66.7% bullish, 33.3% bearish)
+
+### 🖥️ Open Local HTML Charts
+
+If you've generated charts locally using the Python script:
+
+#### Method 1: Double-click (Easiest)
+Simply double-click on any generated HTML file to open it in your default web browser.
+
+#### Method 2: Command Line
+```bash
+# Open specific chart
+open AAPL_pullback_viewer_20250826_210331.html
+
+# On Windows
+start AAPL_pullback_viewer_20250826_210331.html
+
+# On Linux
+xdg-open AAPL_pullback_viewer_20250826_210331.html
+```
+
+#### Method 3: From Browser
+1. Open your web browser
+2. Press `Ctrl+O` (or `Cmd+O` on Mac)
+3. Navigate to the HTML file and select it
+4. The interactive chart will load with full functionality
+
+#### Method 4: Drag and Drop
+Drag the HTML file directly into any open browser window or tab.
+
+### Chart Interaction Tips
+Once opened, you can:
+- **Zoom**: Mouse wheel or click-drag to select area
+- **Pan**: Click and drag to move around
+- **Hover**: Mouse over points for detailed information
+- **Toggle**: Click legend items to show/hide data series
+- **Reset**: Double-click to reset zoom
+- **Download**: Use browser's save/print functions to export
