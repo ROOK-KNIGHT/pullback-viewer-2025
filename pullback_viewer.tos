@@ -1,7 +1,15 @@
-# Pullback Viewer (Thinkscript version)
-# Based on emka's Pullback Viewer logic
+# Market Structure Analyzer (ThinkScript version)
+# Based on TradingView's Trading Desk indicator
+# Implements BOS High/Low tracking and Market Stage classification
 
 declare upper;
+
+# Input parameters
+input showBOSLines = yes;
+input showMBPoints = yes;
+input showMarketStage = yes;
+input lineWidth = 1;
+input maxLookback = 500; # Reduced from 2000 for ThinkScript performance
 
 # Define candle parts
 def o = open;
@@ -9,36 +17,137 @@ def h = high;
 def l = low;
 def c = close;
 
-# Bullish pullback condition:
-def bullishPB = c > h[1] and c > o;
+# Initialize BOS levels
+def bosHigh = if IsNaN(bosHigh[1]) then h else bosHigh[1];
+def bosLow = if IsNaN(bosLow[1]) then l else bosLow[1];
 
-# Bearish pullback condition:
-def bearishPB = c < l[1] and c < o;
+# Market Break detection logic
+def bullishMB = c > bosHigh[1];
+def bearishMB = c < bosLow[1];
 
-# --- Remember last bullish and bearish signal levels ---
-def lastBullish = if bullishPB then c else lastBullish[1];
-def lastBearish = if bearishPB then c else lastBearish[1];
+# BOS High/Low update logic
+def newBosHigh = if bullishMB then h else 
+                 if bearishMB then h else bosHigh[1];
 
-# Plot markers
-plot BullishSignal = if bullishPB then h + (h - l) * 0.1 else Double.NaN;
-BullishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
-BullishSignal.SetDefaultColor(Color.GREEN);
-BullishSignal.SetLineWeight(3);
+def newBosLow = if bullishMB then l else 
+                if bearishMB then l else bosLow[1];
 
-plot BearishSignal = if bearishPB then l - (h - l) * 0.1 else Double.NaN;
-BearishSignal.SetPaintingStrategy(PaintingStrategy.POINTS);
-BearishSignal.SetDefaultColor(Color.RED);
-BearishSignal.SetLineWeight(3);
+# Wave analysis (simplified for ThinkScript)
+def waveLookback = Min(maxLookback, BarNumber());
 
-# --- Horizontal lines at last signals ---
-plot BullishLine = if IsNaN(c) then Double.NaN else lastBullish;
-BullishLine.SetDefaultColor(Color.GREEN);
-BullishLine.SetStyle(Curve.SHORT_DASH);
+# For bullish MB, find the lowest low in lookback period
+def bullishWaveLow = if bullishMB then 
+    Lowest(l, waveLookback) else newBosLow;
 
-plot BearishLine = if IsNaN(c) then Double.NaN else lastBearish;
-BearishLine.SetDefaultColor(Color.RED);
-BearishLine.SetStyle(Curve.SHORT_DASH);
+# For bearish MB, find the highest high in lookback period  
+def bearishWaveHigh = if bearishMB then 
+    Highest(h, waveLookback) else newBosHigh;
 
-# Optional: Add labels for confirmation
-#AddChartBubble(bullishPB, h, "Bull PB", Color.GREEN, yes);
-#AddChartBubble(bearishPB, l, "Bear PB", Color.RED, no);
+# Final BOS levels with wave validation
+def finalBosHigh = if bullishMB then bearishWaveHigh else
+                   if bearishMB then h else finalBosHigh[1];
+
+def finalBosLow = if bullishMB then l else
+                  if bearishMB then bullishWaveLow else finalBosLow[1];
+
+# Market Break validation
+def validBullishMB = bullishMB and (finalBosLow != finalBosLow[1]);
+def validBearishMB = bearishMB and (finalBosHigh != finalBosHigh[1]);
+
+# MB sequence tracking (simplified)
+def mbValue = if validBullishMB then 1 else if validBearishMB then -1 else 0;
+
+# Market stage determination (simplified logic)
+def bullishCount = if validBullishMB then bullishCount[1] + 1 else
+                   if validBearishMB then 0 else bullishCount[1];
+
+def bearishCount = if validBearishMB then bearishCount[1] + 1 else
+                   if validBullishMB then 0 else bearishCount[1];
+
+# Market stage classification
+def marketStage = if bullishCount >= 2 and bearishCount > 0 and bearishCount <= 3 then 2 # Reaccumulation
+                  else if bearishCount >= 2 and bullishCount > 0 and bullishCount <= 3 then -2 # Redistribution
+                  else if bearishCount > 3 then -1 # Distribution
+                  else if bullishCount > 3 then 1 # Accumulation
+                  else if mbValue == 1 then 1 # Accumulation
+                  else if mbValue == -1 then -1 # Distribution
+                  else 0; # Neutral
+
+# Plot BOS High line (step-line approximation)
+plot BOSHighLine = if showBOSLines then finalBosHigh else Double.NaN;
+BOSHighLine.SetDefaultColor(Color.BLUE);
+BOSHighLine.SetLineWeight(lineWidth);
+BOSHighLine.SetStyle(Curve.FIRM);
+
+# Plot BOS Low line (step-line approximation)
+plot BOSLowLine = if showBOSLines then finalBosLow else Double.NaN;
+BOSLowLine.SetDefaultColor(Color.BLUE);
+BOSLowLine.SetLineWeight(lineWidth);
+BOSLowLine.SetStyle(Curve.FIRM);
+
+# Plot Bullish MB points
+plot BullishMBPoints = if showMBPoints and validBullishMB then h + (h - l) * 0.1 else Double.NaN;
+BullishMBPoints.SetPaintingStrategy(PaintingStrategy.POINTS);
+BullishMBPoints.SetDefaultColor(Color.GREEN);
+BullishMBPoints.SetLineWeight(4);
+
+# Plot Bearish MB points
+plot BearishMBPoints = if showMBPoints and validBearishMB then l - (h - l) * 0.1 else Double.NaN;
+BearishMBPoints.SetPaintingStrategy(PaintingStrategy.POINTS);
+BearishMBPoints.SetDefaultColor(Color.RED);
+BearishMBPoints.SetLineWeight(4);
+
+# Market stage background color
+DefineGlobalColor("Accumulation", Color.DARK_GREEN);
+DefineGlobalColor("Distribution", Color.DARK_RED);
+DefineGlobalColor("Reaccumulation", Color.GREEN);
+DefineGlobalColor("Redistribution", Color.RED);
+DefineGlobalColor("Neutral", Color.GRAY);
+
+# Background color based on market stage
+AssignPriceColor(
+    if !showMarketStage then Color.CURRENT else
+    if marketStage == 1 then GlobalColor("Accumulation") else
+    if marketStage == -1 then GlobalColor("Distribution") else
+    if marketStage == 2 then GlobalColor("Reaccumulation") else
+    if marketStage == -2 then GlobalColor("Redistribution") else
+    GlobalColor("Neutral")
+);
+
+# Market stage labels (optional - uncomment to enable)
+def showStageLabel = showMarketStage and (marketStage != marketStage[1]);
+
+AddChartBubble(showStageLabel and marketStage == 1, h, "ACCUM", GlobalColor("Accumulation"), yes);
+AddChartBubble(showStageLabel and marketStage == -1, l, "DIST", GlobalColor("Distribution"), no);
+AddChartBubble(showStageLabel and marketStage == 2, h, "REACCUM", GlobalColor("Reaccumulation"), yes);
+AddChartBubble(showStageLabel and marketStage == -2, l, "REDIST", GlobalColor("Redistribution"), no);
+AddChartBubble(showStageLabel and marketStage == 0, (h + l) / 2, "NEUTRAL", GlobalColor("Neutral"), yes);
+
+# Optional: MB point labels with details
+#AddChartBubble(validBullishMB, h, "Bull MB\nH:" + finalBosHigh + "\nL:" + finalBosLow, Color.GREEN, yes);
+#AddChartBubble(validBearishMB, l, "Bear MB\nH:" + finalBosHigh + "\nL:" + finalBosLow, Color.RED, no);
+
+# Study title and information
+def studyTitle = "Market Structure Analyzer - BOS: H=" + Round(finalBosHigh, 2) + " L=" + Round(finalBosLow, 2);
+
+# Current market stage text
+def stageText = if marketStage == 1 then "Accumulation"
+                else if marketStage == -1 then "Distribution"
+                else if marketStage == 2 then "Reaccumulation"
+                else if marketStage == -2 then "Redistribution"
+                else "Neutral";
+
+# Add study information label
+AddLabel(showMarketStage, "Stage: " + stageText, 
+    if marketStage == 1 then Color.GREEN
+    else if marketStage == -1 then Color.RED
+    else if marketStage == 2 then Color.LIGHT_GREEN
+    else if marketStage == -2 then Color.PINK
+    else Color.GRAY);
+
+AddLabel(showBOSLines, "BOS H: " + Round(finalBosHigh, 2) + " L: " + Round(finalBosLow, 2), Color.BLUE);
+
+# Performance note: This ThinkScript version is a simplified implementation
+# of the Python Market Structure Analyzer due to ThinkScript limitations.
+# For full functionality including 2000-candle wave analysis and complete
+# market stage logic, use the Python version.
